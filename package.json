@@ -1,0 +1,12 @@
+{
+  "name": "farside",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FARSIDE — The Knocking at Anaximenes. A GPU-rendered 3D lunar rover exploration game.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js 5173"
+  },
+  "engines": { "node": ">=18" }
+}
