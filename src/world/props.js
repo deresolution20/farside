@@ -418,6 +418,158 @@ export class Props {
     return g;
   }
 
+  /* ============================================================
+     THE LONG SHADOW — listening array (task 5)
+     Dark since the day-612 burst: masts lean, shelters are battered,
+     a single LED on each post breathes at a fraction of duty.
+     Deterministic per site (coordinate-seeded RNG), like buildPipeNode.
+     ============================================================ */
+  buildPost(x, z) {
+    const g = new THREE.Group();
+    const rng = makeRNG((Math.floor(x * 31 + z * 17) ^ 0x5057) | 1);
+    const mAlu = new THREE.MeshStandardMaterial({ color: 0x8e8b83, metalness: 0.85, roughness: 0.55 });
+    const mDark = new THREE.MeshStandardMaterial({ color: 0x33312e, metalness: 0.6, roughness: 0.7 });
+    const mHab = new THREE.MeshStandardMaterial({ color: 0x6e6a63, metalness: 0.4, roughness: 0.75 });
+    const mBurn = new THREE.MeshStandardMaterial({ color: 0x17151a, metalness: 0.3, roughness: 0.85 });
+
+    // geophone mast: leaning tripod legs + main boom, dead antenna head
+    const lean = (rng() - 0.5) * 0.24, tiltDir = rng() * Math.PI * 2;
+    for (let i = 0; i < 3; i++) {
+      const a = tiltDir + i / 3 * Math.PI * 2;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 2.7, 7), mAlu);
+      leg.position.set(Math.cos(a) * 0.55, 1.22, Math.sin(a) * 0.55);
+      leg.rotation.z = -Math.cos(a) * (0.42 + lean * 0.5);
+      leg.rotation.x = Math.sin(a) * (0.42 + lean * 0.5);
+      leg.castShadow = true; g.add(leg);
+    }
+    const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 3.4, 9), mAlu);
+    boom.position.y = 1.7;
+    boom.rotation.z = lean; boom.rotation.x = -lean * 0.7;
+    boom.castShadow = true; g.add(boom);
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.55, 10), mDark);
+    head.position.set(-Math.sin(lean) * 1.7, 3.45, Math.cos(lean * 0.7) * -1.7);
+    head.rotation.z = lean; head.castShadow = true; g.add(head);
+
+    // battered shelter beside the mast
+    const sh = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.35, 1.5), mHab);
+    body.position.y = 0.72; body.castShadow = true; sh.add(body);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.06), mBurn);
+    panel.position.set(0.5 + rng() * 0.2, 0.75, 0.76); panel.rotation.y = (rng() - 0.5) * 0.5;
+    panel.castShadow = true; sh.add(panel);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.05, 0.05), mDark);
+    door.position.set(-0.55, 0.66, 0.76); door.castShadow = true; sh.add(door);
+    sh.position.set((rng() - 0.5) * 1.2, -0.06, 1.35 + rng() * 0.5);
+    sh.rotation.y = rng() * Math.PI * 2;
+    sh.rotation.z = (rng() - 0.5) * 0.09;
+    g.add(sh);
+
+    // ground scorch + a few debris bits, like the station
+    const scorch = new THREE.Mesh(new THREE.CircleGeometry(2.6, 24), new THREE.MeshBasicMaterial({
+      color: 0x0a0a0c, transparent: true, opacity: 0.4, depthWrite: false
+    }));
+    scorch.rotation.x = -Math.PI / 2; scorch.position.y = 0.05; g.add(scorch);
+    for (let i = 0; i < 6; i++) {
+      const a = rng() * 6.28, r = 1.6 + rng() * 2.6;
+      const bit = new THREE.Mesh(
+        rng() < 0.5 ? new THREE.BoxGeometry(0.18 + rng() * 0.4, 0.07, 0.12 + rng() * 0.35)
+                    : new THREE.CylinderGeometry(0.04, 0.04, 0.25 + rng() * 0.5, 6),
+        rng() < 0.4 ? mBurn : mAlu);
+      bit.position.set(Math.cos(a) * r, 0.1 + rng() * 0.08, Math.sin(a) * r);
+      bit.rotation.set(rng() * 3, rng() * 6, rng() * 3);
+      bit.castShadow = true; g.add(bit);
+    }
+
+    // the one still-alive light: a dim amber LED breathing at low duty
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({
+      color: 0xffb04d, transparent: true, opacity: 0.35
+    }));
+    led.position.set(Math.sin(lean) * -1.9, 3.75, 0); g.add(led);
+
+    const y = this.terrain.heightAt(x, z);
+    g.position.set(x, y, z);
+    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    scorch.castShadow = false; scorch.receiveShadow = false;
+    g.userData.led = led; g.userData.phase = x * 0.31 + z * 0.17;
+    this.group.add(g);
+    this.colliders.push({ x, z, r: 1.7, kind: 'post' });
+    (this.posts ||= []).push(g);
+    return g;
+  }
+
+  buildHub(x, z) {
+    const g = new THREE.Group();
+    const rng = makeRNG((Math.floor(x * 31 + z * 17) ^ 0x70B) | 1);
+    const mAlu = new THREE.MeshStandardMaterial({ color: 0x85827a, metalness: 0.85, roughness: 0.55 });
+    const mDark = new THREE.MeshStandardMaterial({ color: 0x2c2a28, metalness: 0.6, roughness: 0.7 });
+
+    // mast ring: five short masts, one snapped short, strung with cable
+    const ring = 2.3, masts = [];
+    for (let i = 0; i < 5; i++) {
+      const a = i / 5 * Math.PI * 2 + 0.4;
+      const snapped = i === 2;
+      const h = snapped ? 1.1 : 2.4 + rng() * 0.7;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, h, 9), mAlu);
+      m.position.set(Math.cos(a) * ring, h / 2 - (snapped ? 0.05 : 0), Math.sin(a) * ring);
+      m.rotation.z = (rng() - 0.5) * (snapped ? 0.9 : 0.22);
+      m.rotation.x = (rng() - 0.5) * (snapped ? 0.9 : 0.22);
+      m.castShadow = true; g.add(m); masts.push({ m, h, a });
+    }
+    for (let i = 0; i < 5; i++) {
+      const a = masts[i], b = masts[(i + 1) % 5];
+      const pa = a.m.position, pb = b.m.position;
+      const dx = pb.x - pa.x, dy = pb.y - pa.y, dz = pb.z - pa.z;
+      const len = Math.hypot(dx, dy, dz), sag = 0.25 + rng() * 0.2;
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, len, 5), mDark);
+      cable.position.set((pa.x + pb.x) / 2, (pa.y + pb.y) / 2 - sag, (pa.z + pb.z) / 2);
+      cable.lookAt(pb.x, pb.y - 2 * sag, pb.z);
+      cable.rotateX(Math.PI / 2);
+      g.add(cable);
+    }
+
+    // buried console: half of a rack sticking out of a shallow trench
+    const trench = new THREE.Mesh(new THREE.CircleGeometry(3.4, 28), new THREE.MeshBasicMaterial({
+      color: 0x0a0a0c, transparent: true, opacity: 0.5, depthWrite: false
+    }));
+    trench.rotation.x = -Math.PI / 2; trench.position.y = 0.04; g.add(trench);
+    const rack = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.1, 1.1), mAlu);
+    box.position.y = 0.28; box.castShadow = true; rack.add(box);
+    const screen = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x0c1418, metalness: 0.2, roughness: 0.4,
+        emissive: 0x0a2a38, emissiveIntensity: 0.25 }));
+    screen.position.set(0, 0.42, 0.56); screen.rotation.x = -0.18; screen.castShadow = true; rack.add(screen);
+    rack.position.set((rng() - 0.5) * 0.6, -0.22, (rng() - 0.5) * 0.6);
+    rack.rotation.y = rng() * Math.PI * 2; rack.rotation.z = (rng() - 0.5) * 0.12;
+    g.add(rack);
+
+    for (let i = 0; i < 8; i++) {
+      const a = rng() * 6.28, r = 3.6 + rng() * 2.4;
+      const bit = new THREE.Mesh(
+        rng() < 0.5 ? new THREE.BoxGeometry(0.2 + rng() * 0.5, 0.08, 0.15 + rng() * 0.4)
+                    : new THREE.CylinderGeometry(0.05, 0.05, 0.3 + rng() * 0.6, 6),
+        rng() < 0.4 ? mDark : mAlu);
+      bit.position.set(Math.cos(a) * r, 0.1 + rng() * 0.08, Math.sin(a) * r);
+      bit.rotation.set(rng() * 3, rng() * 6, rng() * 3);
+      bit.castShadow = true; g.add(bit);
+    }
+
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), new THREE.MeshBasicMaterial({
+      color: 0x39c4e8, transparent: true, opacity: 0.3
+    }));
+    led.position.set(0, 1.5, 0); g.add(led);
+
+    const y = this.terrain.heightAt(x, z);
+    g.position.set(x, y, z);
+    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    trench.castShadow = false; trench.receiveShadow = false;
+    g.userData.led = led; g.userData.phase = x * 0.31 + z * 0.17;
+    this.group.add(g);
+    this.colliders.push({ x, z, r: 3.6, kind: 'hub' });
+    (this.hubs ||= []).push(g);
+    return g;
+  }
+
   /* ---------------- deployable relay ---------------- */
   buildRelay(x, z) {
     const g = new THREE.Group();
@@ -538,6 +690,12 @@ export class Props {
   update(dt, t, camera) {
     if (this.pylons) for (const p of this.pylons) {
       p.userData.led.visible = ((t * 1.35 + p.userData.phase) % 1) < 0.16;
+    }
+    if (this.posts) for (const p of this.posts) {
+      p.userData.led.material.opacity = 0.18 + 0.24 * (0.5 + 0.5 * Math.sin(t * 0.9 + p.userData.phase));
+    }
+    if (this.hubs) for (const h of this.hubs) {
+      h.userData.led.material.opacity = 0.12 + 0.30 * (0.5 + 0.5 * Math.sin(t * 0.5 + h.userData.phase));
     }
     if (this.relays) for (const r of this.relays) {
       const k = 0.55 + 0.45 * Math.sin(t * 2.4 + r.position.x);

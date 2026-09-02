@@ -140,12 +140,44 @@ Two regions: **Anaximenes** (existing world, must stay byte-identical) +
     reload boots into longshadow with re-derived statuses; no console errors (pointer-lock
     `NotAllowedError` from synthetic input filtered — gate sessions emit it too).
     **GATE PASS 21/21** (fresh profile) — default Anaximenes flow unaffected by new menu DOM.
-  - Known follow-up: HUD minimap header still "ANAXIMENES BASIN" in LS (hud.js outside
-    allowlist → Task 5).
-- [ ] **Task 5 — The Long Shadow world** (`regions.js`, `props.js`) (NEXT)
-  - Tune `P_LONGSHADOW` (rim wall ≈ +90…+150 m over floor, pocked floor, ≤ ~20° approach
-    slopes, flat spawn); new builders `buildPost(x,z)` + `buildHub(x,z)` (colliders + LED idle);
-    `sunAz0` dusk start; anomaly field per spec.
+  - Known follow-up (RESOLVED in Task 5): HUD minimap header / mission name /
+    SLED range were still pinned to Anaximenes.
+- [x] **Task 5 — The Long Shadow world** (`regions.js`, `props.js`) (DONE)
+  - **Tuned `P_LONGSHADOW`** (node-side tuning rig, then verified in-page):
+    `bowl {20,70,330}`, `rim.amp 77.2` + `breachSeed 5123`, `terraceAmp 4`,
+    craters `[[104,26,50],[36,9,24],[12,2.4,8]]`, `keepClean` 130–150 m aprons at
+    all five landmarks. Measured: crest Δ **117.3 m** (target 90–150); spawn
+    pad (13×13 / 2.5 m / 30 m span) **1.45 m** (target ≤2 m); approach slopes
+    postA 10.5° / postB 9.8° / hub 17.4° / breach 15.0° (target ≤~20°); no crater
+    pits under any landmark (worst 1.66 m). `sunAz0 0.20` → spawn in the rim
+    shadow for sun az 0.14–1.00 (~2.5–4 min dark start, SOL 22.2° at deploy).
+  - **Landmarks re-seated** (coords may move per spec): the stub coords sat on
+    the 45–70° wall face. Final: home (241.7, 203.6), breach (276, 88, same stub
+    ray az≈0.31), postA (116, −250), postB (−149, 188), hub (−255, −126);
+    spawn (233.7, 196.6, heading 3.842). Anomaly field unchanged in shape:
+    32 points, deterministic (two builds identical); core (−251,−120) d=9
+    `hub`; cable (126,−258) d=2.4; 0 pipes.
+  - **`buildPost(x,z)`** (leaning geophone tripod + battered shelter, scorch +
+    debris, dim amber LED breathing at 0.18–0.42 opacity, collider r 1.7) and
+    **`buildHub(x,z)`** (five-mast ring, one snapped, strung cable, buried
+    console with dark screen, dim cyan LED, collider r 3.6) in `props.js`;
+    coordinate-seeded RNG (`buildPipeNode` pattern), idle anim in `props.update`.
+    Wired in `main.js` `buildWorld` (+2 lines, guarded — absent in Anaximenes).
+  - **Region-aware HUD fixes** (allowed-list drift, documented in the task
+    notes): HUD mission name/map header/SLED range+marker followed
+    `game.region` instead of the imported `HOME` constant (read 139 m on LS);
+    boot/menu taglines from a new per-region `tagline` field. Anaximenes
+    visually unchanged.
+  - **`tools/gate.cjs` transport fix** (4 lines): length prefix now bytes
+    (`json.length` is UTF-16 — one non-ASCII character in an in-page script
+    truncated the packet and wedged Marionette silently forever).
+  - Verified: `node --check` green; bake-diff PASS; **ls05 verify driver 28/28**
+    (fresh profile: terrain samplers, anomaly determinism + specials, 2×
+    `bakeTerrain` identity, free-survey deploy + dusk rim shot `ls05_03`, 460 m
+    real-steer drive to postA stopped at 4.5 m with the hold-E prompt visible
+    `ls05_04`, swap back to Anaximenes clean); **GATE PASS 21/21** (fresh
+    profile). The `ls05-verify.cjs` driver is intentionally uncommitted (spec:
+    sampler inline, no new committed tool) — fold into the G22–G28 gate in Task 7.
 - [ ] **Task 6 — The Long Shadow campaign** (`regions.js`, `lore.js`)
   - Missions L02–L05 (`ls-echo`, `ls-quiet`, `ls-silence`, `ls-count`), codex
     `ls-posta/ls-postb/ls-hub/ls-count`, ending card THE COUNT; additive SAMPLES

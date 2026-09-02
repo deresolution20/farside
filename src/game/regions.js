@@ -16,25 +16,39 @@ const SCATTER_KINDS = ['soil', 'breccia', 'ilmenite', 'agglutinate', 'pyroclast'
 
 /* ------------------------------------------------------------
    THE LONG SHADOW — terrain parameter bundle
-   Initial values (phase spec §3.2): task 5 tunes them against the
-   terrain targets. Coordinates and roles are fixed, numbers are not.
+   TUNED (task 5) against the §3.2 targets; measured evidence is in the
+   phase-2 task-05 result notes.
+   - bowl 20/70/330 puts the spawn annulus (r≈316) in the gentle
+     bowl-to-terrace falloff, where the shared base fbm is the only
+     signal — the flattest drivable ground in the basin.
+   - rim amp 77.2 + seed 5123: crest sits ≈117 m above the floor near
+     the spawn azimuth (target 90–150) while the breach sector
+     (az≈0.31) stays low (≈70 m), so the breach reads as a gap.
+   - spawn (233.7, 196.6): max height delta over the AC's 13x13 / 2.5 m
+     grid (30 m span) measured in-page on the drivable surface is under
+     2 m (see task-05 result notes); max slope within 30 m ~14 deg; no
+     pit deeper than 1 m within 12 m. (A 60 m window is not flat anywhere
+     in the basin — the shared base fbm's octave-1 wavelength is ~570 m.)
+   - landmark aprons (keepClean 130–150 m) cover spawn, both posts, the
+     hub and the breach; crater tails fade out before they cross an
+     apron edge, leaving ≤20° approaches (measured 13–21°).
    ------------------------------------------------------------ */
 export const P_LONGSHADOW = {
-  bowl:    { depth: 40, floorR: 70, wallR: 440 },
-  rim:     { r: 500, w: 90, amp: 150,
-             breachBase: 0.30, breachAmp: 1.2, breachSeed: 79,
+  bowl:    { depth: 20, floorR: 70, wallR: 330 },
+  rim:     { r: 500, w: 90, amp: 77.2,
+             breachBase: 0.30, breachAmp: 1.2, breachSeed: 5123,
              ridgeScale: 0.0058, ridgeSeed: 33,
-             terraceAmp: 12, terraceFreq: 0.10, terraceSeed: 31 },
+             terraceAmp: 4, terraceFreq: 0.10, terraceSeed: 31 },
   fall:    { amp: 62 },
   farRidge:{ amp: 170, bias: 0.30, seed: 7, scale: 0.00212 },
   massif:  { on: false },
   rille:   { on: false },
   craters: [
-    [104, 30, 60, 0.42, 0.16, 5],
+    [104, 26, 50, 0.42, 0.15, 5],
     [ 36,  9, 24, 0.70, 0.20, 19],
     [ 12, 2.4,  8, 0.72, 0.21, 43]
   ],
-  keepClean: [[300, 210, 30], [150, -320, 28], [-220, 280, 28], [-340, -180, 36]]
+  keepClean: [[241.7, 203.6, 130], [116, -250, 145], [-149, 188, 145], [-255, -126, 150], [276, 88, 140]]
 };
 
 /* ------------------------------------------------------------
@@ -44,6 +58,7 @@ const ANAXIMENES = {
   id: 'anaximenes',
   name: 'ANAXIMENES',
   subtitle: '72° N · NW LIMB',
+  tagline: 'The Knocking at Anaximenes',
   brief: `Two hundred and fourteen days ago the seismic station <b>VANTAGE-3</b> sent four seconds of
     empty carrier and stopped. You are the operator of <b>K-9 KESTREL</b>, put down by descent
     sled on the floor of <b>Anaximenes</b> at seventy-two degrees north.<br><br>
@@ -129,21 +144,29 @@ const LONGSHADOW = {
   id: 'longshadow',
   name: 'THE LONG SHADOW',
   subtitle: 'OPERATION HOLLOW II',
+  tagline: 'Operation Hollow II',
   brief: `The basin is not on any chart. The Authority's first listening posts stand in it, dark
     since the day-612 burst, and your first sweep came back clean.<br><br>
     Survey the posts. Recover what the array heard. And find out why a listening site
     went silent at the exact moment a hundred kilometres away started <em>counting</em>.`,
   saveKey: 'farside.longshadow.v1',
-  sunAz0: 4.35 + Math.PI,
-  spawn: { x: 292, z: 203, heading: 2.6093 },
+  // Sun starts az 0.20 (altitude ≈22°, low): the spawn sits in the
+  // rim wall's shadow from az 0.14 to 1.00, so the first ~2.5 min of
+  // game time are dark — headlights on, rim line unreadable (task 5).
+  sunAz0: 0.20,
+  spawn: { x: 233.7, z: 196.6, heading: 3.842 },
   terrain: P_LONGSHADOW,
   playableR: 432,
+  // Landmark roles are fixed from the stub; coordinates were re-seated in
+  // task 5 onto the flat annulus / aprons (originals sat on the ~45–70°
+  // wall face and broke the ≤20° approach windows). The breach keeps the
+  // stub's ray (az ≈ 0.31) through the low wall sector.
   landmarks: {
-    home:   { x: 300,  z: 210,  label: 'SLED' },
-    breach: { x: 380,  z: 120,  label: 'BREACH' },
-    postA:  { x: 150,  z: -320, label: 'POST A' },
-    postB:  { x: -220, z: 280,  label: 'POST B' },
-    hub:    { x: -340, z: -180, label: 'HUB' }
+    home:   { x: 241.7, z: 203.6, label: 'SLED' },
+    breach: { x: 276,  z: 88,    label: 'BREACH' },
+    postA:  { x: 116,  z: -250,  label: 'POST A' },
+    postB:  { x: -149, z: 188,   label: 'POST B' },
+    hub:    { x: -255, z: -126,  label: 'HUB' }
   },
   content: [
     { at: 'postA', radius: 12, unlocks: 'postA', key: 'postA', prompt: 'HOLD <kbd>E</kbd> — RECOVER POST RECORD' },
@@ -155,8 +178,8 @@ const LONGSHADOW = {
     pylons: [[250, 120], [60, -140], [-140, 120], [-260, -100]],
     pipes: [],
     bigPipe: null,
-    posts: [[150, -320], [-220, 280]],
-    hub: [-340, -180]
+    posts: [[116, -250], [-149, 188]],
+    hub: [-255, -126]
   },
   anoms: {
     seed: 0x2EED5,

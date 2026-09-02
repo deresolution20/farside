@@ -2,7 +2,6 @@
    HUD — telemetry, instruments, codex, menus
    ============================================================ */
 import { CODEX, MISSIONS } from '../game/lore.js';
-import { HOME } from '../world/props.js';
 import { DRIVE } from '../game/rover.js';
 import { PLAYABLE_R, MACRO_RES, MACRO_EXT } from '../world/terrain.js';
 import { clamp, sstep } from '../core/rng.js';
@@ -17,7 +16,7 @@ export class HUD {
       hud: $('hud'), mission: $('missionBox'), tag: $('missionTag'), name: $('missionName'), obj: $('missionObj'),
       sunPhase: $('sunPhase'), met: $('met'), rangeHome: $('rangeHome'),
       batt: $('gBatt'), heat: $('gHeat'), hull: $('gHull'), chips: $('sysChips'),
-      bay: $('baygrid'), bayCount: $('bayCount'), mapScale: $('mapScale'),
+      bay: $('baygrid'), bayCount: $('bayCount'), mapScale: $('mapScale'), mapName: $('hudMapName'),
       prompt: $('prompt'), logfeed: $('logfeed'), vig: $('vig'),
       discovery: $('discovery'), gprState: $('gprState'),
       codexList: $('codexList'), codexRead: $('codexRead')
@@ -42,7 +41,8 @@ export class HUD {
   }
 
   /* ---------------- minimap base: hillshade the real height field ---------------- */
-  bakeMap(terrain) {
+  bakeMap(terrain, name) {
+    if (name && this.el.mapName) this.el.mapName.textContent = name + ' BASIN';
     const N = 300;
     const c = document.createElement('canvas'); c.width = c.height = N;
     const g = c.getContext('2d');
@@ -142,7 +142,7 @@ export class HUD {
     const m = game.mission;
     if (!m) {
       this.el.tag.textContent = 'FREE SURVEY';
-      this.el.name.textContent = 'ANAXIMENES';
+      this.el.name.textContent = game.region ? game.region.name : 'ANAXIMENES';
       this.el.obj.innerHTML = `<div>${game.excavated} excavations · ${(game.rover.odo / 1000).toFixed(2)} km driven</div>`;
       this.missionDirty = false; return;
     }
@@ -237,7 +237,10 @@ export class HUD {
     // objective bearing
     const targets = [];
     for (const t of game.objectiveTargets()) targets.push([t.x, t.z, t.color, t.label]);
-    if (game.bay.length >= 6 || game.objDone.deep || game.power < 25) targets.push([HOME.x, HOME.z, '#6fe3f5', 'SLED']);
+    if (game.bay.length >= 6 || game.objDone.deep || game.power < 25) {
+      const hm = game.region.landmarks.home;
+      targets.push([hm.x, hm.z, '#6fe3f5', 'SLED']);
+    }
     for (const a of game.anoms) if (a.found && !a.taken && game.distTo(a.x, a.z) < 190)
       targets.push([a.x, a.z, a.special || a.type === 'pipe' ? '#ffb454' : '#6fe3f5', null]);
     for (const [tx, tz, col, lab] of targets) {
@@ -309,7 +312,7 @@ export class HUD {
         g.fillStyle = col; g.fillText(label, ux, uy - 9);
       }
     };
-    poi(HOME.x, HOME.z, '#6fe3f5', 'SLED', 'home');
+    poi(game.region.landmarks.home.x, game.region.landmarks.home.z, '#6fe3f5', 'SLED', 'home');
     for (const t of game.objectiveTargets(true)) poi(t.x, t.z, t.color, t.label, 'x');
     for (const a of game.anoms) if (a.found && !a.taken)
       poi(a.x, a.z, a.special || a.type === 'pipe' ? '#ffb454' : '#2ad2ff', null, 'dot');
@@ -490,7 +493,7 @@ export class HUD {
     const alt = Math.asin(clamp(sky.sunDir.y, -1, 1)) * 180 / Math.PI;
     const az = (Math.atan2(sky.sunDir.x, sky.sunDir.z) * 180 / Math.PI + 360) % 360;
     this.el.sunPhase.textContent = `${alt.toFixed(1)}° / ${Math.round(az)}°`;
-    const dh = game.distTo(HOME.x, HOME.z);
+    const dh = game.distTo(game.region.landmarks.home.x, game.region.landmarks.home.z);
     this.el.rangeHome.textContent = dh > 999 ? `${(dh / 1000).toFixed(2)} km` : `${Math.round(dh)} m`;
 
     // instruments

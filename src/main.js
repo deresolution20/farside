@@ -39,6 +39,7 @@ const App = {
 const _selRegion = REGIONS.find(r => r.id === App.settings.region);
 if (_selRegion) App.region = _selRegion;
 App.sunAz = App.region.sunAz0;
+$('bootSub').textContent = App.region.tagline;
 
 function guessQuality() {
   // deviceMemory is Chromium-only, so on Safari and Firefox the core count has
@@ -203,13 +204,16 @@ function buildWorld(region, baked, tex) {
   region.props.pipes.forEach(([x, z, s]) => props.buildPipeNode(x, z, s));
   const bp = region.props.bigPipe;
   if (bp) props.buildPipeNode(bp.x, bp.z, bp.s, true);
+  // the long shadow listening array (absent in Anaximenes)
+  (region.props.posts || []).forEach(([x, z]) => props.buildPost(x, z));
+  if (region.props.hub) props.buildHub(region.props.hub[0], region.props.hub[1]);
 
   const dust = new Dust(e.scene, terrain, terrain.uniforms.uSunDir, e.quality.dust);
   const rover = new Rover(terrain, e.scene);
   rover.panelTarget = 0;
   const rig = new CameraRig(e.camera, terrain);
 
-  App.hud.bakeMap(terrain);
+  App.hud.bakeMap(terrain, region.name);
 
   const game = new Game({
     region, terrain, rover, props, dust, sky: App.sky, audio: App.audio,
@@ -311,6 +315,7 @@ async function selectRegion(r) {
 function showMenu() {
   App.state = ST.MENU;
   $('menu').classList.remove('hidden');
+  $('menuSub').textContent = App.region.tagline;
   App.hud.hideHUD();
   App.input.unlock();
   App.input.showTouch(false);

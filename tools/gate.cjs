@@ -60,9 +60,12 @@ sock.on('close', () => { if (!done) fail(new Error('socket closed')); });
 function send(name, params = {}) {
   const id = nextId++;
   const json = JSON.stringify([0, id, name, params]);
+  // Length prefix is BYTES (scripts may carry non-ASCII; a short prefix
+  // truncates the packet and wedges the transport).
+  const payload = Buffer.from(json, 'utf8');
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
-    sock.write(json.length + ':' + json);
+    sock.write(Buffer.concat([Buffer.from(payload.length + ':', 'latin1'), payload]));
   });
 }
 
