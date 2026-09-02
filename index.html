@@ -10,7 +10,7 @@
 <!-- ?v= is a cache buster: GitHub Pages serves assets with max-age=600, so a
      returning player keeps the old layout for ten minutes after a deploy.
      Bump this whenever styles.css changes in a way players must see. -->
-<link rel="stylesheet" href="src/ui/styles.css?v=4" />
+<link rel="stylesheet" href="src/ui/styles.css?v=5" />
 <script type="importmap">
 {
   "imports": {
@@ -46,6 +46,15 @@
   </div>
 </div>
 
+<!-- ============ REGION LOAD (menu-only world swap; sibling of #boot) ============ -->
+<div id="regionload" class="overlay boot hidden">
+  <div class="boot-inner">
+    <p class="subtitle" id="rloadName">—</p>
+    <div class="loadbar"><i id="rloadfill"></i></div>
+    <p class="loadtext" id="rloadtext">shaping the basin…</p>
+  </div>
+</div>
+
 <!-- ============ MAIN MENU ============ -->
 <div id="menu" class="overlay menu hidden">
   <div class="menu-grid">
@@ -53,6 +62,7 @@
       <h1 class="title big">FARSIDE</h1>
       <p class="subtitle">The Knocking at Anaximenes</p>
       <div class="brief" id="menuBrief"></div>
+      <div id="regionCards"></div>
       <div class="menu-actions">
         <button class="btn primary" id="btnPlay">BEGIN DESCENT</button>
         <button class="btn" id="btnContinue" hidden>RESUME SURVEY</button>

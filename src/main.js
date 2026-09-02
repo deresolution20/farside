@@ -8,14 +8,14 @@ import { Input } from './core/input.js';
 import { Audio } from './core/audio.js';
 import { Save } from './core/save.js';
 import { clamp, sstep, lerp } from './core/rng.js';
-import { bakeTerrain, Terrain, PLAYABLE_R } from './world/terrain.js';
+import { bakeTerrain, Terrain } from './world/terrain.js';
 import { Sky } from './world/sky.js';
-import { Props, HOME } from './world/props.js';
+import { Props } from './world/props.js';
 import { Dust } from './world/dust.js';
 import { makeEarthTextures, makeMoonAlbedo } from './world/textures.js';
 import { Rover, DRIVE, EARTH_RTT } from './game/rover.js';
 import { CameraRig, CAM } from './game/camera.js';
-import { Game, STATION, MASSIF, OPS } from './game/gameplay.js';
+import { Game, OPS } from './game/gameplay.js';
 import { REGIONS } from './game/regions.js';
 import { HUD } from './ui/hud.js';
 
@@ -33,6 +33,12 @@ const App = {
   }, Save.settings()),
   elapsed: 0, sunAz: REGIONS[0].sunAz0, paused: false
 };
+
+/* Come back to the basin we left last time. settings.region rides in the
+   settings slot; anything absent or stale falls through to the first region. */
+const _selRegion = REGIONS.find(r => r.id === App.settings.region);
+if (_selRegion) App.region = _selRegion;
+App.sunAz = App.region.sunAz0;
 
 function guessQuality() {
   // deviceMemory is Chromium-only, so on Safari and Firefox the core count has
@@ -59,6 +65,33 @@ const bar = $('loadfill'), loadtext = $('loadtext');
 function progress(p, msg) {
   bar.style.width = (clamp(p, 0, 1) * 100).toFixed(1) + '%';
   if (msg) loadtext.textContent = msg;
+}
+
+/* The bake pump, shared by boot and region swaps. bakeTerrain is a generator
+   so the loading bar can animate while it runs; the rAF/timer race below is
+   what keeps it alive. */
+function bakeAsync(report, P) {
+  const gen = bakeTerrain(report, P);
+  return new Promise((resolve) => {
+    // rAF alone would stall the whole load if the tab is backgrounded before
+    // the bake finishes, so race it against a timer and take whichever fires.
+    const schedule = (fn) => {
+      let fired = false;
+      const go = () => { if (!fired) { fired = true; fn(); } };
+      requestAnimationFrame(go);
+      setTimeout(go, 26);
+    };
+    const pump = () => {
+      // Nobody is watching a hidden tab, and its timers are throttled to ~1 Hz,
+      // so chunking there would stall the load indefinitely. Just finish.
+      const budget = document.hidden ? 1e9 : 14;
+      const t0 = performance.now();
+      let res;
+      do { res = gen.next(); } while (!res.done && performance.now() - t0 < budget);
+      if (res.done) resolve(res.value); else schedule(pump);
+    };
+    schedule(pump);
+  });
 }
 
 /* Optional imagery. The game generates everything it needs, so the repo ships
@@ -107,27 +140,7 @@ async function boot() {
 
   /* ---- bake the basin, yielding to the browser so the bar animates ---- */
   progress(0.02, 'shaping the basin');
-  const gen = bakeTerrain(progress, App.region.terrain);
-  const baked = await new Promise((resolve) => {
-    // rAF alone would stall the whole load if the tab is backgrounded before
-    // the bake finishes, so race it against a timer and take whichever fires.
-    const schedule = (fn) => {
-      let fired = false;
-      const go = () => { if (!fired) { fired = true; fn(); } };
-      requestAnimationFrame(go);
-      setTimeout(go, 26);
-    };
-    const pump = () => {
-      // Nobody is watching a hidden tab, and its timers are throttled to ~1 Hz,
-      // so chunking there would stall the load indefinitely. Just finish.
-      const budget = document.hidden ? 1e9 : 14;
-      const t0 = performance.now();
-      let res;
-      do { res = gen.next(); } while (!res.done && performance.now() - t0 < budget);
-      if (res.done) resolve(res.value); else schedule(pump);
-    };
-    schedule(pump);
-  });
+  const baked = await bakeAsync(progress, App.region.terrain);
 
   progress(0.76, 'generating imagery');
   const tex = await loadTextures();
@@ -139,36 +152,15 @@ async function boot() {
   progress(0.90, 'downlinking imagery');
 
   progress(0.94, 'assembling K-9');
-  const terrain = new Terrain(engine.renderer, baked, engine.quality, engine.caps);
-  terrain.uniforms.uAlbedoTex.value = tex.moonAlbedo;
-  engine.scene.add(terrain.group);
-
+  /* The engine, sky, audio, input and texture set are built once and shared by
+     every world; buildWorld owns everything a region has. */
   const sky = new Sky(engine.renderer, engine.scene, tex, engine.quality);
-  const props = new Props(engine.scene, terrain, engine.quality);
-  props.buildHome();
-  props.buildStation(STATION.x, STATION.z);
-  // survey pylons the previous crew left behind
-  App.region.props.pylons.forEach((p, i) => props.buildPylon(p[0], p[1], i));
-  // the pipes breaking surface in a few places
-  App.region.props.pipes.forEach(([x, z, s]) => props.buildPipeNode(x, z, s));
-  const bp = App.region.props.bigPipe;
-  if (bp) props.buildPipeNode(bp.x, bp.z, bp.s, true);
-
-  const dust = new Dust(engine.scene, terrain, terrain.uniforms.uSunDir, engine.quality.dust);
-  const rover = new Rover(terrain, engine.scene);
-  rover.panelTarget = 0;
-  const rig = new CameraRig(engine.camera, terrain);
   const audio = new Audio();
   const hud = new HUD(audio);
-  hud.bakeMap(terrain);
-
   const input = new Input($('stage'));
-  const game = new Game({
-    region: App.region, terrain, rover, props, dust, sky, audio, hud, engine, rig, scene: engine.scene, input
-  });
-  game.tc = App.settings.tc;
+  Object.assign(App, { sky, audio, hud, input, tex });
 
-  Object.assign(App, { terrain, sky, props, dust, rover, rig, audio, hud, input, game, tex });
+  Object.assign(App, buildWorld(App.region, baked, tex));
 
   applySettings();
   buildSettingsUI();
@@ -186,6 +178,134 @@ async function boot() {
 }
 
 /* ============================================================
+    WORLD — one region, one world
+    ------------------------------------------------------------
+    Builds a region's full world in the original boot order. Every object
+    that wraps a terrain uniform, caches heights, or holds colliders is
+    rebuilt per world: Dust wraps terrain.uniforms.uSunDir at construction,
+    the clipmap rings live in terrain.group, and a stale reference would
+    render two basins at once. Engine/Sky/Audio/Input/settings/tex are
+    deliberately untouched.
+    ============================================================ */
+function buildWorld(region, baked, tex) {
+  const e = App.engine;
+
+  const terrain = new Terrain(e.renderer, baked, e.quality, e.caps);
+  terrain.uniforms.uAlbedoTex.value = tex.moonAlbedo;
+  e.scene.add(terrain.group);
+
+  const props = new Props(e.scene, terrain, e.quality, region);
+  props.buildHome(region.landmarks.home);
+  if (region.props.station !== 'none') props.buildStation(region.landmarks.station.x, region.landmarks.station.z);
+  // survey pylons the previous crew left behind
+  region.props.pylons.forEach((p, i) => props.buildPylon(p[0], p[1], i));
+  // the pipes breaking surface in a few places
+  region.props.pipes.forEach(([x, z, s]) => props.buildPipeNode(x, z, s));
+  const bp = region.props.bigPipe;
+  if (bp) props.buildPipeNode(bp.x, bp.z, bp.s, true);
+
+  const dust = new Dust(e.scene, terrain, terrain.uniforms.uSunDir, e.quality.dust);
+  const rover = new Rover(terrain, e.scene);
+  rover.panelTarget = 0;
+  const rig = new CameraRig(e.camera, terrain);
+
+  App.hud.bakeMap(terrain);
+
+  const game = new Game({
+    region, terrain, rover, props, dust, sky: App.sky, audio: App.audio,
+    hud: App.hud, engine: e, rig, scene: e.scene, input: App.input
+  });
+  game.tc = App.settings.tc;
+
+  return { terrain, props, dust, rover, rig, game };
+}
+
+/* ============================================================
+    REGION PICKER — menu only
+    ------------------------------------------------------------
+    Two cards, one per region, with a status line read from that region's
+    save slot. Selecting a card bakes the new basin behind a loading sheet
+    (its own bar; #boot is never reused), swaps the world, and returns to
+    the menu. In-game switching is out of scope: the save is the exit.
+    ============================================================ */
+const rbar = $('rloadfill'), rtext = $('rloadtext');
+function progressR(p, msg) {
+  rbar.style.width = (clamp(p, 0, 1) * 100).toFixed(1) + '%';
+  if (msg) rtext.textContent = msg;
+}
+
+function regionCardStatus(r) {
+  const s = Save.read(r);
+  if (!s) return ['NO SURVEY — READY FOR DESCENT', 'none'];
+  if (s.missionId == null) return ['SURVEY COMPLETE — FREE SURVEY', 'done'];
+  const m = (r.missions || []).find(m => m.id === s.missionId);
+  return ['SURVEY IN PROGRESS — ' + (m ? m.tag : 'SURVEY'), ''];
+}
+
+function renderRegionCards() {
+  const wrap = $('regionCards');
+  wrap.innerHTML = '';
+  for (const r of REGIONS) {
+    const [status, cls] = regionCardStatus(r);
+    const c = document.createElement('button');
+    c.className = 'region-card' + (r === App.region ? ' sel' : '');
+    c.id = 'region-' + r.id;
+    c.innerHTML =
+      `<div class="rc-name">${r.name}</div>` +
+      `<div class="rc-sub">${r.subtitle}</div>` +
+      `<div class="rc-status ${cls}">${status}</div>`;
+    c.onclick = () => selectRegion(r);
+    wrap.appendChild(c);
+  }
+}
+
+let swapping = false;
+async function selectRegion(r) {
+  if (swapping || !r || r === App.region || App.state !== ST.MENU) return;
+  swapping = true;
+  try {
+    App.settings.region = r.id;
+    persist();
+    renderRegionCards();
+
+    const e = App.engine;
+    $('menu').classList.add('hidden');
+    $('regionload').classList.remove('hidden');
+    $('rloadName').textContent = r.name;
+    rbar.style.transition = 'none'; rbar.style.width = '0%';
+    void rbar.offsetWidth;                      // don't animate 100% → 0 on reuse
+    rbar.style.transition = '';
+    progressR(0.02, 'shaping the basin');
+
+    const baked = await bakeAsync(progressR, r.terrain);
+
+    progressR(0.76, 'assembling K-9');
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+
+    /* Tear down exactly what buildWorld owns, in reverse. The game's reset
+       drops its scene objects (scan markers, deployed kit) first; the
+       terrain group must come off before anything that reads its height
+       field does. */
+    App.game.reset(false);
+    e.scene.remove(App.terrain.group);
+    e.scene.remove(App.props.group);
+    e.scene.remove(App.dust.points);
+    e.scene.remove(App.rover.root);
+
+    Object.assign(App, buildWorld(r, baked, App.tex), { region: r });
+    App.sunAz = r.sunAz0;
+    applySettings();
+
+    progressR(1, 'link established');
+    await new Promise(res2 => setTimeout(res2, 260));
+    $('regionload').classList.add('hidden');
+    showMenu();
+  } finally {
+    swapping = false;
+  }
+}
+
+/* ============================================================
    MENUS
    ============================================================ */
 function showMenu() {
@@ -197,6 +317,7 @@ function showMenu() {
   const saved = Save.read(App.region);
   $('btnContinue').hidden = !saved;
   $('menuBrief').innerHTML = App.region.brief;
+  renderRegionCards();
 }
 
 function startGame(freeRoam, loadSaved) {
@@ -694,7 +815,8 @@ function stepWorld(dt, raw, input) {
   if (!App._sunVisT || App.elapsed - App._sunVisT > 0.18) {
     App._sunVisT = App.elapsed;
     App._sunVisTarget = terrain.sunVis(rover.pos.x, rover.pos.z, sky.sunDir);
-    props.padLight = 1 - terrain.sunVis(HOME.x, HOME.z, sky.sunDir);
+    const pad = App.region.landmarks.home;
+    props.padLight = 1 - terrain.sunVis(pad.x, pad.z, sky.sunDir);
   }
   rover.sunVis = lerp(rover.sunVis, App._sunVisTarget ?? 1, Math.min(1, dt * 3));
   engine.sun.intensity = 3.0 * lerp(0.06, 1, rover.sunVis) * clamp(sky.sunDir.y * 12, 0, 1);
@@ -787,4 +909,4 @@ boot().catch((err) => {
   if (t) { t.textContent = 'LINK FAILURE — ' + err.message; t.style.color = '#ff5f56'; }
 });
 
-void PLAYABLE_R; void QUALITY; void Props; void MASSIF;
+void QUALITY;

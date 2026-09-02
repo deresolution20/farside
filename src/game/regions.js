@@ -115,6 +115,13 @@ const LS_MISSIONS = [
       { id: 'drive', type: 'distance', ref: 'home', op: '>', v: 120, text: 'Drive 120 m from the sled' },
       { id: 'scan', type: 'event', on: 'scan-done', text: 'Run one ground-penetrating radar sweep', hint: 'press G' }
     ]
+  },
+  {
+    // Stub: L02 exists so completing L01 advances to it (save missionId
+    // 'ls-echo') instead of ending the survey. Task 6 grows its content.
+    id: 'ls-echo', tag: 'MISSION 02', name: 'THE ECHO',
+    brief: `The sweep is done and the posts are out there somewhere across the terraces, dark and patient. The directive said: listen, and do not dig.`,
+    objectives: []
   }
 ];
 
@@ -128,7 +135,7 @@ const LONGSHADOW = {
     went silent at the exact moment a hundred kilometres away started <em>counting</em>.`,
   saveKey: 'farside.longshadow.v1',
   sunAz0: 4.35 + Math.PI,
-  spawn: { x: 292, z: 203, heading: 0.96 },
+  spawn: { x: 292, z: 203, heading: 2.6093 },
   terrain: P_LONGSHADOW,
   playableR: 432,
   landmarks: {

@@ -89,4 +89,86 @@ Shadow L01 becomes playable end-to-end.
 - [ ] Spec still matches code (no drift)
 
 ---
-_Result / notes:_
+_Result / notes (2026-09-01):_
+
+**main.js**
+- Boot split into `bakeAsync(report, P)` (the rAF/timer pump moved out of the
+  boot IIFE, now shared by boot and swaps) and `buildWorld(region, baked, tex)`
+  in exactly the spec order: terrain → `uAlbedoTex` → `new Props(scene, terrain,
+  quality, region)` → `props.buildHome(region.landmarks.home)` →
+  `buildStation(region.landmarks.station.x/z)` only when
+  `region.props.station !== 'none'` → pylons/pipes/bigPipe from `region.props`
+  → dust → rover → `new CameraRig` → `hud.bakeMap(terrain)` →
+  `new Game({…, region})` with `game.tc = App.settings.tc`.
+  Engine/Sky/Audio/HUD/Input build once in boot (before buildWorld); the texture
+  set is shared (never re-loaded on swap).
+- `App.region` resolves at module load from `settings.region` (falls back to
+  `REGIONS[0]` when absent/stale) and `App.sunAz` initialises from it — a reload
+  boots directly into the persisted region.
+- `renderRegionCards()` builds `#regionCards` from `REGIONS` (ids
+  `region-<id>`, name + subtitle, status from `Save.read(r)` with the spec's
+  exact three strings); `showMenu()` re-renders it (re-derived statuses + `.sel`).
+- `selectRegion(r)`: menu-only guard + `swapping` re-entrancy flag; persists
+  `settings.region`; hides the menu; its own `#regionload` bar/text (`rbar`/
+  `rtext` — never `#boot`'s); `bakeAsync(report, r.terrain)`; teardown is
+  exactly: `App.game.reset()` (drops scan markers + deployed kit from the scene)
+  → `scene.remove(terrain.group | props.group | dust.points | rover.root)` →
+  `buildWorld` + `App.{terrain,props,dust,rover,rig,game,region}` reassign →
+  `App.sunAz = r.sunAz0` → `applySettings()` → 260 ms settle → `showMenu()`.
+  Engine/Sky/Audio/Input/settings/tex untouched; dust rebuilt, not re-pointed
+  (it wraps `terrain.uniforms.uSunDir` at construction).
+- `stepWorld`'s pad light now reads `App.region.landmarks.home` (was the ANAX
+  `HOME` constant); `STATION`/`MASSIF`/`HOME`/`PLAYABLE_R` imports dropped from
+  main.js.
+
+**index.html** — `#regionCards` in the menu (between brief and actions);
+`#regionload` overlay as a sibling of `#boot` with own name/bar/text;
+stylesheet `?v=5`.
+
+**styles.css** — `.region-card`/`.region-card.sel`/`#regionCards` in the menu
+section (plus phone column-stack rule); `#regionload` rules use px/unitless only
+(no `var(--s)` — it's out of the `.hud` scope — and no `.panel`, which also
+scales with `--s`).
+
+**props.js** — constructor `(scene, terrain, quality, region)` derives
+`playableR` + `homeRef` (falls back to the constants, so Anaximenes yields the
+identical boulder field); `buildHome(home)` takes the landmark (falls back to
+`homeRef`); `levelPad()` follows `homeRef`.
+
+**regions.js (L01 tweaks only)**
+- `ls-echo` stub MISSION 02 (empty objectives): L01 completion must advance to
+  it (save `missionId: 'ls-echo'`) instead of ending the survey — per the
+  acceptance contract. Task 6 grows its content.
+- LS spawn heading 0.96 → **2.6093**: the old heading drove straight into the
+  sled/boulder field (a test run stalled at 21 m). 2.6093 was found by a node
+  search over the real baked LS field with the real boulder placer: a 150 m
+  straight line, 0 colliders within 4 m + collider radius, max slope 21°, stays
+  inside the playable radius. (Verified end-to-end in the in-page run: 122.7 m
+  driven with steering only, no teleport.)
+
+**Verification**
+- `node --check` green on every touched file.
+- `tools/bake-diff.cjs` PASS (Anax bake untouched — regression).
+- Node bake smoke: both terrain bundles bake to completion, finite, distinct
+  (`heightAt(0,0)` ANAX 27.1 vs LS −46.6 at base; massif lifts the anax core
+  72.8 m over ls).
+- **In-page swap test 24/24** (raw-TCP Marionette, fresh storage): picker
+  renders (2 cards, ids, `.sel`, NO SURVEY statuses); five swaps (A→B→A ×2 +
+  final B): old terrain group detached each time (no doubled world), scene
+  children stable, `settings.region` persisted, `.sel`/brief re-derived,
+  re-baked Anax `heightAt(0,0)` bit-deterministic; LS vs ANAX
+  `heightAt(0,0)` −45.48 vs 27.21; LS L01: MISSION 01 card (3 objectives) →
+  T deploy → 122.7 m drive → G scan → complete → `farside.longshadow.v1` holds
+  `missionId: 'ls-echo'` while the Anax slot stays byte-identical to its
+  canary; LS codex seeded (`ls-brief`, `ls-memo`); MISSION 02 stub card (0
+  objectives) shown on advance; reload boots into longshadow with re-derived
+  card statuses (IN PROGRESS — MISSION 02 / canary). No console errors
+  (filtered: the pointer-lock `NotAllowedError` that synthetic input provokes —
+  the gate's sessions emit it too).
+- **GATE PASS 21/21** (fresh profile) — default-selection Anaximenes campaign
+  unaffected by the new menu DOM.
+
+Known follow-up (not this task): HUD minimap header still reads "ANAXIMENES
+BASIN" in Long Shadow — `hud.js` is outside this allowlist; Task 5's world pass
+covers it.
+

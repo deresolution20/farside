@@ -11,7 +11,17 @@ Updated after each task.
 - Serve: `node server.js 8080 --shots` (port 5173 is taken on this box).
 - Behavior gate: headful Firefox (Mesa WebGL2) on `DISPLAY=:1` + `node tools/gate.cjs 2828 .shots`
   (exit 0 = PASS). Marionette is **raw length-prefixed JSON over plain TCP** (`N:<json>`),
-  not WebSocket — `tools/gate.cjs` is the reference client.
+  not WebSocket — `tools/gate.cjs` is the reference client. A driver that needs the port
+  should send `WebDriver:NewSession` after the capabilities object before `Navigate`.
+- **Firefox profile gotcha (hard-won):** launching `-no-remote -marionette -profile <dir>`
+  with `<dir>` **absent** pops a "Profile Missing" dialog and hangs (no port, no profile
+  dir created) until a human clicks it. Always `mkdir` the profile dir before launching
+  (or wipe with `rm -rf <dir> && mkdir <dir>`). In-page tests that need clean storage can
+  instead `localStorage.clear()` + reload.
+**Never match `pkill`/`kill` patterns against 'firefox -no-remote' literally on a command
+  line that also launches firefox** — the wrapper shell's own cmdline matches and kills
+  itself mid-chain; use the bracket trick (`[f]irefox -no-remote`) and never share a line
+  with the launch.
 - Game gotchas: mission card blocks the world (`App.state===6`) until `#cardGo` (fresh start
   shows it 700 ms in); autosave writes every 20 s of game time in ALL states; save key
   `farside.anaximenes.v3`.
@@ -97,11 +107,42 @@ Two regions: **Anaximenes** (existing world, must stay byte-identical) +
     'listening'` in 1.7 s (advance's write is real); **GATE PASS 21/21** (fresh
     `/tmp/ffprof`): full campaign + save round-trip, `['60,-40',1]` present, resume =
     free survey + payloadTaken + 12 codex. No save-key bump.
-- [ ] **Task 4 — world swap + menu picker** (`main.js`, `index.html`, `styles.css`) (NEXT)
-  - `buildWorld(region, baked, ctx)` extracted from boot; `#regionCards` picker (JS-generated,
-    status from `Save.read(region)`), `#regionload` overlay, lazy bake of the non-booted
-    region, full world rebuild on switch; `Props` gains a `region` param.
-- [ ] **Task 5 — The Long Shadow world** (`regions.js`, `props.js`)
+- [x] **Task 4 — world swap + menu picker** (`main.js`, `index.html`, `styles.css`) (DONE)
+  - `bakeAsync(report, P)` (boot's rAF/timer pump, now shared) + `buildWorld(region, baked,
+    tex)` in the spec's exact build order (terrain → albedo → `new Props(scene, terrain,
+    quality, region)` → `buildHome(region.landmarks.home)` → `buildStation` only when
+    `region.props.station !== 'none'` → pylons/pipes/bigPipe → dust → rover → rig →
+    `hud.bakeMap(terrain)` → `new Game({…, region})` + `game.tc`). Engine/Sky/Audio/HUD/
+    Input build once at boot (shared, never rebuilt); textures shared.
+  - `App.region` resolves at module load from `settings.region` (fallback `REGIONS[0]`);
+    `App.sunAz` from it — reload boots into the persisted region.
+  - `#regionCards` JS-generated from `REGIONS` (ids `region-<id>`, status strings per spec
+    from `Save.read(r)`); `showMenu()` re-derives `.sel` + statuses. `selectRegion(r)`:
+    menu-only + `swapping` guard; own `#regionload` bar/text (not `#boot`); teardown exactly
+    `game.reset()` (markers/deployables) → `scene.remove` of terrain.group/props.group/
+    dust.points/rover.root → rebuild + reassign + `sunAz = r.sunAz0` + `applySettings()`.
+  - `Props(scene, terrain, quality, region)`: `playableR`/`homeRef` derive from region
+    (constant fallbacks → Anaximenes boulder field identical); `buildHome(home)` param.
+    `stepWorld` pad light → `App.region.landmarks.home`.
+  - regions.js (L01 tweaks): `ls-echo` MISSION 02 stub so L01 advance saves
+    `missionId: 'ls-echo'`; LS spawn heading 0.96 → **2.6093** (old heading drove into the
+    sled/boulders, stalled at 21 m; new one verified node-side: 150 m clear line, max slope
+    21°, in-fence).
+  - CSS: `.region-card`/`.sel`/`#regionCards` in the menu section; `#regionload` px/unitless
+    only (no `var(--s)`, no `.panel`); index.html `?v=5`.
+  - Verified: `node --check` green; bake-diff PASS (regression); node bake smoke (both
+    bundles complete, finite, distinct); **in-page swap test 24/24** (fresh storage):
+    picker render; 5 swaps A→B→A×2+B — old terrain detached each time (no doubled world),
+    settings persisted, re-baked Anax deterministic, LS vs ANAX heightAt(0,0) −45.48 vs
+    27.21; LS L01 end-to-end (MISSION 01 card → T → 122.7 m driven with steering, no
+    teleport → G → complete) → `farside.longshadow.v1` has `missionId: 'ls-echo'`, Anax
+    slot canary byte-identical; LS codex seeded; MISSION 02 stub card (0 objectives);
+    reload boots into longshadow with re-derived statuses; no console errors (pointer-lock
+    `NotAllowedError` from synthetic input filtered — gate sessions emit it too).
+    **GATE PASS 21/21** (fresh profile) — default Anaximenes flow unaffected by new menu DOM.
+  - Known follow-up: HUD minimap header still "ANAXIMENES BASIN" in LS (hud.js outside
+    allowlist → Task 5).
+- [ ] **Task 5 — The Long Shadow world** (`regions.js`, `props.js`) (NEXT)
   - Tune `P_LONGSHADOW` (rim wall ≈ +90…+150 m over floor, pocked floor, ≤ ~20° approach
     slopes, flat spawn); new builders `buildPost(x,z)` + `buildHub(x,z)` (colliders + LED idle);
     `sunAz0` dusk start; anomaly field per spec.

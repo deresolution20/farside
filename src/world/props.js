@@ -117,10 +117,13 @@ function rockMaterial() {
 const MAX_BOULDERS = 2200;
 
 export class Props {
-  constructor(scene, terrain, quality) {
+  constructor(scene, terrain, quality, region) {
     this.scene = scene;
     this.terrain = terrain;
     this.quality = quality;
+    this.region = region || null;
+    this.playableR = (this.region && this.region.playableR) || PLAYABLE_R;
+    this.homeRef = (this.region && this.region.landmarks && this.region.landmarks.home) || HOME;
     this.group = new THREE.Group();
     scene.add(this.group);
     this.colliders = [];        // {x,z,r,restitution}
@@ -148,6 +151,7 @@ export class Props {
        moving only `count` makes every tier a strict subset of the next. */
     const N = MAX_BOULDERS;
     const dummy = new THREE.Object3D();
+    const PR = this.playableR, hRef = this.homeRef;
     this.boulderMeshes = [];
     this._boulderRocks = [];      // per-variant collider lists, in draw order
 
@@ -165,15 +169,15 @@ export class Props {
         const a = rng() * Math.PI * 2;
         const band = rng();
         let r;
-        if (band < 0.42) r = 30 + rng() * (PLAYABLE_R - 60);
-        else if (band < 0.78) r = PLAYABLE_R - 130 + rng() * 130;
+        if (band < 0.42) r = 30 + rng() * (PR - 60);
+        else if (band < 0.78) r = PR - 130 + rng() * 130;
         else r = 60 + rng() * 120;
         const x = Math.cos(a) * r, z = Math.sin(a) * r;
-        if (Math.hypot(x, z) > PLAYABLE_R + 60) continue;
+        if (Math.hypot(x, z) > PR + 60) continue;
         const slope = this.terrain.slopeAt(x, z);
         if (slope > 34) continue;                              // rocks roll off steep faces
         // keep the landing pad clear
-        if (Math.hypot(x - HOME.x, z - HOME.z) < 26) continue;
+        if (Math.hypot(x - hRef.x, z - hRef.z) < 26) continue;
         const size = V.min + Math.pow(rng(), 1.9) * (V.max - V.min);
         const y = this.terrain.heightAt(x, z) - size * 0.24;
         dummy.position.set(x, y, z);
@@ -215,7 +219,8 @@ export class Props {
   /* ============================================================
      the descent sled — home, recharge, sample drop-off
      ============================================================ */
-  buildHome() {
+  buildHome(home) {
+    const h = home || this.homeRef;
     const g = new THREE.Group();
     const mAlu = new THREE.MeshStandardMaterial({ color: 0xa8a49b, metalness: 0.9, roughness: 0.42 });
     const mGold = new THREE.MeshPhysicalMaterial({ color: 0xffc36b, metalness: 1, roughness: 0.36, clearcoat: 0.2 });
@@ -294,22 +299,23 @@ export class Props {
     flag.position.set(3.86, 2.02, -1.2); flag.castShadow = true; g.add(flag);
     this.flag = flag;
 
-    const y = this.terrain.heightAt(HOME.x, HOME.z);
-    g.position.set(HOME.x, y, HOME.z);
+    const y = this.terrain.heightAt(h.x, h.z);
+    g.position.set(h.x, y, h.z);
     g.rotation.y = -0.6;
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     ring.castShadow = false; ring.receiveShadow = false;
     chute.castShadow = false;
     this.group.add(g);
     this.home = g;
-    this.colliders.push({ x: HOME.x, z: HOME.z, r: 3.1, kind: 'home' });
+    this.colliders.push({ x: h.x, z: h.z, r: 3.1, kind: 'home' });
     this.levelPad();
     return g;
   }
 
   /** Flatten the regolith under the sled's footpads so it never floats. */
   levelPad() {
-    for (let i = 0; i < 3; i++) this.terrain.excavate(HOME.x, HOME.z, 7.5, 0.10);
+    const h = this.homeRef;
+    for (let i = 0; i < 3; i++) this.terrain.excavate(h.x, h.z, 7.5, 0.10);
   }
 
   /* ============================================================

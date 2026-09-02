@@ -104,6 +104,31 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 .dossier-row.alert b{color:var(--red);animation:blink 2.4s steps(1) infinite}
 @keyframes blink{0%,60%{opacity:1}61%,100%{opacity:.25}}
 
+/* ---------------- menu · region picker ---------------- */
+#regionCards{display:flex;gap:10px;max-width:540px;margin:26px 0 28px}
+.region-card{
+  flex:1 1 0;position:relative;text-align:left;
+  padding:13px 15px 11px;letter-spacing:.14em;
+  border:1px solid var(--hair);background:rgba(216,210,198,.03);
+  color:var(--bone-dim);
+  transition:background .16s ease,border-color .16s ease,color .16s ease;
+}
+.region-card:hover{background:rgba(111,227,245,.07);border-color:var(--cyan-dim)}
+.region-card.sel{border-color:var(--cyan-dim);background:rgba(111,227,245,.08)}
+.region-card.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--cyan)}
+.region-card .rc-name{font-size:12px;letter-spacing:.26em;color:var(--bone)}
+.region-card .rc-sub{margin-top:4px;font-size:9px;letter-spacing:.2em;color:rgba(216,210,198,.42)}
+.region-card .rc-status{margin-top:9px;font-size:9px;letter-spacing:.15em;color:var(--cyan)}
+.region-card .rc-status.done{color:var(--amber)}
+.region-card .rc-status.none{color:rgba(216,210,198,.42)}
+
+/* ---------------- region-load overlay (world swap, menu only) ----------------
+   Borrows the boot look for a sibling sheet, never #boot's state. Sized in px
+   only: --s is defined inside the .hud scope, so this sheet must not use it,
+   and no .panel here (the shared panel scales with --s too). */
+#regionload{z-index:46}
+#regionload .boot-inner{max-width:480px}
+
 /* ---------------- full-screen sheets (codex / pause / help) ----------------
    Deliberately NOT called .panel: that class is the HUD instrument panel, and
    it sets position:relative. An overlay carrying both collapsed to a 2 px
@@ -577,6 +602,7 @@ kbd{display:inline-block;min-width:20px;text-align:center;padding:2px 6px;border
   .menu-actions{max-width:none}
   .btn{padding:14px 16px;font-size:11px}
   .brief{font-size:11.5px;line-height:1.7;margin:16px 0 20px}
+  #regionCards{flex-direction:column;max-width:none;margin:16px 0 18px}
   .title{letter-spacing:.30em;margin-right:-.30em}
   .panel-head{height:52px;padding:0 16px}
   .settings{inset:52px 0 74px 0;padding:14px;grid-template-columns:1fr;gap:8px}
