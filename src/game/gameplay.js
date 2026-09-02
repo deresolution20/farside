@@ -5,13 +5,11 @@
    ============================================================ */
 import * as THREE from 'three';
 import { makeRNG, clamp, sstep, lerp } from '../core/rng.js';
-import { PLAYABLE_R } from '../world/terrain.js';
-import { HOME } from '../world/props.js';
-import { CODEX, SAMPLES, MISSIONS, ENDING_CARD } from './lore.js';
+import { SAMPLES } from './lore.js';
 import { POWER_FLOOR, POWER_KNEE } from './rover.js';
-import { STATION, MASSIF, LANDMARKS, CONTENT } from './content.js';
+import { Save } from '../core/save.js';
 
-export { STATION, MASSIF };
+export { STATION, MASSIF } from './content.js';
 
 const BAY_MAX = 6;
 const SCAN_RANGE = 78;
@@ -44,11 +42,13 @@ const RELAY_SPACING = 95;
 
 export class Game {
   constructor(ctx) {
-    Object.assign(this, ctx);          // {terrain, rover, props, dust, sky, audio, hud, engine, rig}
-    this.reset();
+    Object.assign(this, ctx);          // {region, terrain, rover, props, dust, sky, audio, hud, engine, rig}
+    this.reset(false, ctx.region);
   }
 
-  reset(freeRoam = false) {
+  reset(freeRoam = false, region) {
+    if (region) this.region = region;
+    const R = this.region;
     // tear down anything a previous run left in the scene
     if (this.anoms) for (const a of this.anoms) if (a.marker) this.scene.remove(a.marker);
     if (this.props) this.props.clearDeployables();
@@ -57,14 +57,14 @@ export class Game {
     this.met = 0;
     this.power = 100; this.heat = 12; this.hull = 100;
     this.bay = [];
-    this.unlocked = new Set(CODEX.filter(c => c.start).map(c => c.id));
-    this.missionId = MISSIONS[0].id;
+    this.unlocked = new Set(R.codex.filter(c => c.start).map(c => c.id));
+    this.missionId = R.missions[0].id;
     this.objDone = {};
     this.counts = {};
     this.relaysPlaced = 0;
     this.excavated = 0;
-    this.stationVisited = false;
-    this.drumTaken = false;
+    this.contentVisited = {};
+    this.payloadTaken = false;
     this.transmitted = false;
     this.scan = { active: false, r: 0, t: 0, cool: 0, x: 0, z: 0 };
     this.drill = { active: false, t: 0, target: null };
@@ -73,57 +73,66 @@ export class Game {
     this.autoRecover = 0;
     this.flipTimer = 0;
     this.dangerTone = 0;
-    this.buildAnomalies();
+    this.buildAnomalies(R.anoms);
     if (freeRoam) {
       this.missionId = null;
-      for (const c of CODEX) this.unlocked.add(c.id);
+      for (const c of R.codex) this.unlocked.add(c.id);
     }
   }
 
   /* ============================================================
-     buried things
+     buried things — data-driven from the region's anoms bundle.
+     Single RNG stream, fixed draw order (pipes → scatter → specials),
+     so a region's field is deterministic across builds.
      ============================================================ */
-  buildAnomalies() {
-    const rng = makeRNG(0x5EED17);
+  buildAnomalies(anoms) {
+    const R = this.region;
+    const rng = makeRNG(anoms.seed);
+    const playableR = R.playableR;
     this.anoms = [];
-    const push = (x, z, type, depth, special) => {
+    const push = (x, z, type, depth, special, deep, unlocks) => {
       this.anoms.push({
         // stable identity for saves: decimetre grid key, deterministic across
         // builds (the anomaly field is seeded)
         id: Math.round(x * 10) + ',' + Math.round(z * 10),
         x, z, type, depth, special: special || null,
+        deep: !!deep, unlocks: unlocks || null,
         found: false, taken: false, marker: null
       });
     };
 
-    // the pipes: glass tubes radiating from the massif in a hex arrangement
-    for (let ring = 1; ring <= 5; ring++) {
-      const n = 4 + ring * 2;
-      for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2 + ring * 0.31;
-        const r = 58 + ring * 62 + (rng() - 0.5) * 26;
-        const x = Math.cos(a) * r, z = Math.sin(a) * r;
-        if (Math.hypot(x, z) > PLAYABLE_R - 26) continue;
-        if (this.terrain.slopeAt(x, z) > 26) continue;
-        push(x, z, 'pipe', 3.4 + rng() * 1.4);
+    // pipe rings: tubes radiating from the anchor landmark in a hex arrangement
+    if (anoms.pipes) {
+      const at = R.landmarks[anoms.pipes.anchor];
+      for (let ring = 1; ring <= anoms.pipes.rings; ring++) {
+        const n = 4 + ring * 2;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2 + ring * 0.31;
+          const r = 58 + ring * 62 + (rng() - 0.5) * 26;
+          const x = at.x + Math.cos(a) * r, z = at.z + Math.sin(a) * r;
+          if (Math.hypot(x, z) > playableR - 26) continue;
+          if (this.terrain.slopeAt(x, z) > 26) continue;
+          push(x, z, 'pipe', 3.4 + rng() * 1.4, null, true);
+        }
       }
     }
     // ordinary science, scattered
-    const kinds = ['soil', 'breccia', 'ilmenite', 'agglutinate', 'pyroclast', 'meteoritic'];
-    for (let i = 0; i < 46; i++) {
-      const a = rng() * Math.PI * 2, r = 40 + rng() * (PLAYABLE_R - 70);
+    const kinds = anoms.scatter.kinds;
+    for (let i = 0; i < anoms.scatter.count; i++) {
+      const a = rng() * Math.PI * 2, r = anoms.scatter.rMin + rng() * (playableR - 70);
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
       if (this.terrain.slopeAt(x, z) > 28) continue;
       const t = kinds[Math.floor(Math.pow(rng(), 1.6) * kinds.length)];
       push(x, z, t, 1.2 + rng() * 2.2);
     }
-    // the deep drumhead under the massif — gated: only open while m05's extract
-    // objective is unmet (Game.anomalyOpen). Type must match a SAMPLES key:
-    // _finishDrill looks the sample def up by it.
-    push(MASSIF.x + 6, MASSIF.z - 4, 'drum', 11.0, 'drum');
-    this.anoms[this.anoms.length - 1].unlocks = 'drum';
-    // the lining sample, at the station's own dig site
-    push(STATION.x + 14, STATION.z + 9, 'lining', 4.1, 'lining');
+    // specials: placed at landmark + offset, carrying type/depth/special/
+    // unlocks/deep from the region data. A special's `unlocks` tag keeps it
+    // closed until an unmet objective of the active mission declares it
+    // (Game.anomalyOpen).
+    for (const s of anoms.specials) {
+      const at = R.landmarks[s.at];
+      push(at.x + s.dx, at.z + s.dz, s.type, s.depth, s.special, s.deep, s.unlocks);
+    }
   }
 
   /* ============================================================
@@ -131,17 +140,20 @@ export class Game {
      ============================================================ */
   get mission() {
     if (this.missionId == null) return null;
-    return MISSIONS.find(m => m.id === this.missionId) || null;
+    return this.region.missions.find(m => m.id === this.missionId) || null;
   }
   get bayFull() { return this.bay.length >= BAY_MAX; }
   distTo(x, z) { return Math.hypot(this.rover.pos.x - x, this.rover.pos.z - z); }
-  get atHome() { return this.distTo(HOME.x, HOME.z) < 9.5; }
+  get atHome() {
+    const home = this.region.landmarks.home;
+    return this.distTo(home.x, home.z) < 9.5;
+  }
 
   log(text, kind) { this.hud.log(text, kind); }
 
   unlock(id) {
     if (this.unlocked.has(id)) return;
-    const e = CODEX.find(c => c.id === id);
+    const e = this.region.codex.find(c => c.id === id);
     if (!e) return;
     this.unlocked.add(id);
     this.hud.codexDirty = true;
@@ -156,8 +168,12 @@ export class Game {
     this.audio.ui('ok');
     this.hud.missionDirty = true;
     const m = this.mission;
-    if (m && m.objectives.every(o => this.objDone[o.id])) {
-      setTimeout(() => this.advance(), 1400);
+    if (m) {
+      const o = m.objectives.find(x => x.id === objId);
+      if (o && o.unlock) this.unlock(o.unlock);
+      if (m.objectives.every(o => this.objDone[o.id])) {
+        setTimeout(() => this.advance(), 1400);
+      }
     }
   }
   bump(objId, n = 1) {
@@ -192,7 +208,7 @@ export class Game {
     const h = this.terrain.heightAt(this.rover.pos.x, this.rover.pos.z);
     for (const o of m.objectives) {
       if (o.type !== 'distance' || this.objDone[o.id]) continue;
-      const at = LANDMARKS[o.ref];
+      const at = this.region.landmarks[o.ref];
       if (!at) continue;
       const d = this.distTo(at.x, at.z);
       const met = o.minH != null ? (d < o.v && h > o.minH) : (o.op === '<' ? d < o.v : d > o.v);
@@ -222,9 +238,9 @@ export class Game {
   }
 
   /** Compass/minimap targets derived from the active mission's objectives
-      (distance + station-interact), ref resolved through LANDMARKS.
-      includeDone keeps POIs on the map after their objective completes —
-      the old positional-index rules, without the index. */
+      (distance + station-interact), refs resolved through the region's
+      landmarks. includeDone keeps POIs on the map after their objective
+      completes — the old positional-index rules, without the index. */
   objectiveTargets(includeDone = false) {
     const m = this.mission;
     const out = [];
@@ -232,11 +248,14 @@ export class Game {
     for (const o of m.objectives) {
       if (this.objDone[o.id] && !includeDone) continue;
       if (o.type === 'distance' && o.op === '>') continue;   // "get away" — nothing to point at
-      let at = o.ref ? LANDMARKS[o.ref] : null;
-      if (!at && o.on === 'station-interact') at = LANDMARKS.station;
+      let at = o.ref ? this.region.landmarks[o.ref] : null, labelled = !!o.ref;
+      if (!at && o.on === 'station-interact') {
+        const c = this.region.content.find(c => c.unlocks === o.unlocks);
+        if (c) at = this.region.landmarks[c.at];
+      }
       if (!at) continue;
       out.push({ x: at.x, z: at.z,
-        label: o.ref === 'station' ? 'VANTAGE-3' : o.ref === 'massif' ? 'MASSIF' : o.ref === 'home' ? 'SLED' : null,
+        label: labelled ? (at.label || null) : null,
         color: '#ffb454' });
     }
     return out;
@@ -245,7 +264,8 @@ export class Game {
   advance() {
     const done = this.mission;
     if (!done) return;
-    const next = MISSIONS[MISSIONS.findIndex(m => m.id === done.id) + 1] || null;
+    const R = this.region;
+    const next = R.missions[R.missions.findIndex(m => m.id === done.id) + 1] || null;
     this.missionId = next ? next.id : null;
     this.log(`${done.tag} COMPLETE — ${done.name}`, 'good');
     this.audio.discovery();
@@ -253,7 +273,7 @@ export class Game {
       this.hud.showCard(next);
       this.hud.missionDirty = true;
     } else {
-      this.hud.showCard(ENDING_CARD);
+      this.hud.showCard(R.ending);
       this.freeRoam = true;
     }
     this.save();
@@ -281,7 +301,7 @@ export class Game {
       const d = Math.hypot(a.x - this.scan.x, a.z - this.scan.z);
       if (d > SCAN_RANGE) continue;
       a.found = true; hits++;
-      if (a.type === 'pipe' || a.special) deep++;
+      if (a.deep) deep++;
       this.addMarker(a);
     }
     if (hits) {
@@ -361,8 +381,12 @@ export class Game {
       a.taken = true;
       if (a.marker) { this.scene.remove(a.marker); a.marker = null; }
       this.excavated++;
-      this.emit('sample');
-      if (a.special === 'drum') { this.drumTaken = true; this.emit('extract', a.special); }
+      this.emit('sample', a.special);
+      // deep extract: only the region's transmit sample counts as THE payload
+      if (a.deep) {
+        if (a.special === this.region.transmit.sample) this.payloadTaken = true;
+        this.emit('extract', a.special);
+      }
       if (a.special === 'lining') this.unlock('function');
       this.hud.mapDirty = true;
     }
@@ -437,7 +461,7 @@ export class Game {
       const fy = this.terrain.heightAt(fx, fz);
       if (Math.random() < dt * 55) {
         this.dust.spawn(3, fx, fy, fz, 0.9 + Math.random() * 0.7, 0.35,
-          0, 0, this.drill.target && (this.drill.target.type === 'pipe' || this.drill.target.special) ? 0.85 : 0);
+          0, 0, this.drill.target && this.drill.target.deep ? 0.85 : 0);
       }
       this.rig.addShake(dt * 0.6);
       this.terrain.excavate(fx, fz, 0.9, dt * 0.55);
@@ -493,9 +517,9 @@ export class Game {
         this.log(`${n} SAMPLE${n > 1 ? 'S' : ''} STOWED${rare ? ` · ${rare} FLAGGED` : ''}`, 'good');
         this.audio.ui('ok');
         this.emit('offload');
-        if (this.drumTaken) {
+        if (this.payloadTaken) {
           this.transmitted = true;
-          this.unlock('drum'); this.unlock('lasthour'); this.unlock('transmission');
+          for (const id of this.region.transmit.unlocks) this.unlock(id);
           this.emit('transmit');
         }
       }
@@ -504,15 +528,15 @@ export class Game {
 
     this.checkState();
 
-    /* ---- context prompt: world content first (CONTENT table), else the
-         arm/drill/sled chain ---- */
+    /* ---- context prompt: world content first (region.content), else the
+          arm/drill/sled chain ---- */
     let prompt = null, key = null;
-    for (const c of CONTENT) {
+    for (const c of this.region.content) {
       if (key) break;
-      const at = LANDMARKS[c.at];
+      const at = this.region.landmarks[c.at];
       const gated = !c.unlocks || this.tagOpen(c.unlocks) || this.freeRoam;
       if (!gated || this.distTo(at.x, at.z) >= c.radius) continue;
-      if (c.key === 'station' && this.stationVisited) continue;
+      if (this.contentVisited[c.key]) continue;
       prompt = c.prompt; key = c.key;
     }
     if (!key) {
@@ -535,10 +559,12 @@ export class Game {
       this.interact.t += dt;
       if (this.interact.t > 1.6) {
         this.interact.t = 0;
-        this.stationVisited = true;
-        this.emit('station-interact');
-        this.unlock('log-early'); this.unlock('log-late');
-        this.log('LOCAL STORE RECOVERED — 3 LOG FRAGMENTS', 'good');
+        this.contentVisited[key] = true;
+        this.emit('station-interact', key);
+        if (key === 'station') {
+          this.unlock('log-early'); this.unlock('log-late');
+          this.log('LOCAL STORE RECOVERED — 3 LOG FRAGMENTS', 'good');
+        }
         this.audio.radio();
       }
     } else this.interact.t = 0;
@@ -573,11 +599,12 @@ export class Game {
 
     /* ---- fence warning ---- */
     const r = Math.hypot(this.rover.pos.x, this.rover.pos.z);
-    if (r > PLAYABLE_R + 40 && !this._fenceWarn) {
+    const fence = this.region.playableR;
+    if (r > fence + 40 && !this._fenceWarn) {
       this._fenceWarn = true;
       this.log('APPROACHING RIM WALL — GRADE EXCEEDS 30°', 'warn');
     }
-    if (r < PLAYABLE_R) this._fenceWarn = false;
+    if (r < fence) this._fenceWarn = false;
 
     void ctl;
   }
@@ -592,18 +619,19 @@ export class Game {
   }
 
   strand() {
+    const home = this.region.landmarks.home;
     this.hull = 22;
     this.log('CRITICAL DAMAGE — SLED WINCH RECOVERY', 'bad');
-    this.rover.placeAt(HOME.x - 9, HOME.z - 9, 2.2);
+    this.rover.placeAt(home.x - 9, home.z - 9, 2.2);
     this.power = Math.max(this.power, 35);
     this.audio.ui('bad');
   }
 
   /* ============================================================
-     persistence
+     persistence — writes to the region's own save slot (r.saveKey)
      ============================================================ */
   save() {
-    return {
+    const blob = {
       missionId: this.missionId,
       objDone: this.objDone, counts: this.counts,
       unlocked: [...this.unlocked],
@@ -613,16 +641,18 @@ export class Game {
       relaysPlaced: this.relaysPlaced,
       power: this.power, hull: this.hull, met: this.met,
       pos: [this.rover.pos.x, this.rover.pos.z],
-      stationVisited: this.stationVisited, drumTaken: this.drumTaken,
+      contentVisited: this.contentVisited, payloadTaken: this.payloadTaken,
       odo: this.rover.odo
     };
+    Save.write(this.region, blob);
+    return blob;
   }
 
   load(d) {
     if (!d) return false;
     // unknown/corrupt id -> null (free survey): safer than replaying the campaign
     const mid = d.missionId == null ? null : d.missionId;
-    this.missionId = mid && MISSIONS.some(m => m.id === mid) ? mid : null;
+    this.missionId = mid && this.region.missions.some(m => m.id === mid) ? mid : null;
     // a null mission is only ever written post-campaign (advance() sets
     // freeRoam first) — restore that flag so content gating matches
     if (this.missionId == null) this.freeRoam = true;
@@ -631,7 +661,9 @@ export class Game {
     this.unlocked = new Set(d.unlocked || []);
     this.relaysPlaced = d.relaysPlaced || 0;
     this.power = d.power ?? 100; this.hull = d.hull ?? 100; this.met = d.met || 0;
-    this.stationVisited = !!d.stationVisited; this.drumTaken = !!d.drumTaken;
+    // legacy v3 blobs (pre-regions field renames): one-time migration reads
+    this.contentVisited = d.contentVisited || (d.stationVisited ? { station: true } : {});
+    this.payloadTaken = d.payloadTaken ?? !!d.drumTaken;
     if (d.anoms) for (const [id, v] of d.anoms) {
       const a = this.anoms.find(x => x.id === id); if (!a) continue;
       if (v === 1) a.taken = true;

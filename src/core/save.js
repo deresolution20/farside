@@ -1,23 +1,44 @@
-/* v2: missionId is an id (not a positional index); anoms are [id, code]
-   pairs instead of a positional array. v1 saves are orphaned on purpose
-   (one-time, user-approved) — see Phase 1 spec §5. */
+/* Per-region save slots: each region record (src/game/regions.js) carries its
+   own saveKey ('farside.anaximenes.v3', 'farside.longshadow.v1', ...). The
+   legacy KEY stays as the default slot — a call with no region record still
+   lands in farside.anaximenes.v3 — and as the source of the one-time settings
+   migration. Settings moved to the global key 'farside.set' (the selected
+   region id, settings.region, rides there). */
 const KEY = 'farside.anaximenes.v3';
+const SET_KEY = 'farside.set';
 
 export const Save = {
-  read() {
-    try { return JSON.parse(localStorage.getItem(KEY) || 'null'); }
+  read(r) {
+    const key = (r && r.saveKey) || KEY;
+    try { return JSON.parse(localStorage.getItem(key) || 'null'); }
     catch { return null; }
   },
-  write(data) {
-    try { localStorage.setItem(KEY, JSON.stringify(data)); return true; }
+  write(r, data) {
+    // legacy form: write(blob)
+    if (data === undefined) { data = r; r = null; }
+    const key = (r && r.saveKey) || KEY;
+    try { localStorage.setItem(key, JSON.stringify(data)); return true; }
     catch { return false; }
   },
-  clear() { try { localStorage.removeItem(KEY); } catch { /* private mode */ } },
+  clear(r) {
+    const key = (r && r.saveKey) || KEY;
+    try { localStorage.removeItem(key); } catch { /* private mode */ }
+  },
   settings() {
-    try { return JSON.parse(localStorage.getItem(KEY + '.set') || 'null') || {}; }
-    catch { return {}; }
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); } catch { s = null; }
+    if (!s) {
+      // One-time migration: the pre-regions settings slot was
+      // farside.anaximenes.v3.set. Copy it into farside.set once; after that
+      // the legacy slot is ignored.
+      try {
+        const legacy = JSON.parse(localStorage.getItem(KEY + '.set') || 'null');
+        if (legacy) { s = legacy; localStorage.setItem(SET_KEY, JSON.stringify(legacy)); }
+      } catch { /* ignore */ }
+    }
+    return s || {};
   },
   saveSettings(s) {
-    try { localStorage.setItem(KEY + '.set', JSON.stringify(s)); } catch { /* ignore */ }
+    try { localStorage.setItem(SET_KEY, JSON.stringify(s)); } catch { /* ignore */ }
   }
 };

@@ -159,8 +159,8 @@ async function snap() {
       power: g.power, bay: g.bay.length,
       missionId: g.missionId, freeRoam: g.freeRoam,
       objDone: g.objDone, counts: g.counts,
-      relays: g.relaysPlaced, drumTaken: g.drumTaken, transmitted: g.transmitted,
-      stationVisited: g.stationVisited, state: window.FARSIDE.state
+      relays: g.relaysPlaced, payloadTaken: g.payloadTaken, transmitted: g.transmitted,
+      contentVisited: g.contentVisited, state: window.FARSIDE.state
     };
   `);
 }
@@ -383,7 +383,7 @@ async function extractDrum(coreId) {
     `const g = window.FARSIDE.game; return g.rover.vel.length() < 1.1 ? true : null;`, 10000);
   await lmb();
   await poll('drumhead drill cycle finished',
-    `const g = window.FARSIDE.game; return g && g.drumTaken ? true : null;`, 30000);
+    `const g = window.FARSIDE.game; return g && g.payloadTaken ? true : null;`, 30000);
   await js(keyBody('Space', 'keyup'));     // release the brake
   await tap('KeyR');                       // stow for the drive home
   return a;
@@ -590,7 +590,7 @@ async function findRelaySites() {
   await sleep(2400);                       // interact needs 1.6 s of held E
   await js(keyBody('KeyE', 'keyup'));
   await poll('local store recovered (hold E)',
-    `const g = window.FARSIDE.game; return g && g.stationVisited ? true : null;`, 15000);
+    `const g = window.FARSIDE.game; return g && g.contentVisited && g.contentVisited.station ? true : null;`, 15000);
   await waitCard('mission 05 card shown');
   await shot('11_card_m05');
   await ackCard();
@@ -655,7 +655,7 @@ async function findRelaySites() {
       try {
         await extractDrum(drum.id);
         const s = await snap();
-        result('m05: drumhead core extracted', s.drumTaken === true && s.objDone.deep === true, 'drumTaken=' + s.drumTaken);
+        result('m05: drumhead core extracted', s.payloadTaken === true && s.objDone.deep === true, 'payloadTaken=' + s.payloadTaken);
       } catch (e) { result('m05: drumhead core extracted', false, e.message); }
     }
   }
@@ -704,9 +704,9 @@ async function findRelaySites() {
       `return window.FARSIDE && window.FARSIDE.state === 2 ? true : null;`, 30000);
     const rs = await poll('resumed free survey',
       `const g = window.FARSIDE.game;
-       return g && g.missionId === null && g.freeRoam && g.drumTaken
-         ? g.unlocked.size + ' codex' : null;`, 30000);
-    result('resume restores free survey (missionId null, drumTaken, codex unlocked)',
+       return g && g.missionId === null && g.freeRoam && g.payloadTaken
+          ? g.unlocked.size + ' codex' : null;`, 30000);
+    result('resume restores free survey (missionId null, payloadTaken, codex unlocked)',
       /12 codex/.test(String(rs)), rs);
     await shot('16_resumed');
   } catch (e) {

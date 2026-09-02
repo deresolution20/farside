@@ -16,6 +16,7 @@ import { makeEarthTextures, makeMoonAlbedo } from './world/textures.js';
 import { Rover, DRIVE, EARTH_RTT } from './game/rover.js';
 import { CameraRig, CAM } from './game/camera.js';
 import { Game, STATION, MASSIF, OPS } from './game/gameplay.js';
+import { REGIONS } from './game/regions.js';
 import { HUD } from './ui/hud.js';
 
 const $ = (id) => document.getElementById(id);
@@ -23,13 +24,14 @@ const ST = { BOOT: 0, MENU: 1, PLAY: 2, PAUSE: 3, CODEX: 4, HELP: 5, CARD: 6 };
 
 const App = {
   state: ST.BOOT,
+  region: REGIONS[0],
   settings: Object.assign({
     quality: guessQuality(), fov: 58, sens: 1.0, invertY: false,
     bloom: true, grain: 1.0, aberr: 1.0, stars: 1.0,
     volSfx: 0.8, volMusic: 0.5, music: true, tc: true, hudOn: true, autoCentre: 1,
     hudScale: 1, realistic: false, comms: false
   }, Save.settings()),
-  elapsed: 0, sunAz: 4.35, paused: false
+  elapsed: 0, sunAz: REGIONS[0].sunAz0, paused: false
 };
 
 function guessQuality() {
@@ -105,7 +107,7 @@ async function boot() {
 
   /* ---- bake the basin, yielding to the browser so the bar animates ---- */
   progress(0.02, 'shaping the basin');
-  const gen = bakeTerrain(progress);
+  const gen = bakeTerrain(progress, App.region.terrain);
   const baked = await new Promise((resolve) => {
     // rAF alone would stall the whole load if the tab is backgrounded before
     // the bake finishes, so race it against a timer and take whichever fires.
@@ -146,12 +148,11 @@ async function boot() {
   props.buildHome();
   props.buildStation(STATION.x, STATION.z);
   // survey pylons the previous crew left behind
-  [[-60, 180], [-150, 40], [60, -140], [190, 60], [-250, -110]].forEach((p, i) =>
-    props.buildPylon(p[0], p[1], i));
+  App.region.props.pylons.forEach((p, i) => props.buildPylon(p[0], p[1], i));
   // the pipes breaking surface in a few places
-  [[-118, -64, 1.3], [86, -152, 1.0], [-206, 96, 1.15], [24, 118, 0.9], [-40, -218, 1.25]]
-    .forEach(([x, z, s]) => props.buildPipeNode(x, z, s));
-  props.buildPipeNode(MASSIF.x + 6, MASSIF.z - 4, 2.1, true);
+  App.region.props.pipes.forEach(([x, z, s]) => props.buildPipeNode(x, z, s));
+  const bp = App.region.props.bigPipe;
+  if (bp) props.buildPipeNode(bp.x, bp.z, bp.s, true);
 
   const dust = new Dust(engine.scene, terrain, terrain.uniforms.uSunDir, engine.quality.dust);
   const rover = new Rover(terrain, engine.scene);
@@ -163,7 +164,7 @@ async function boot() {
 
   const input = new Input($('stage'));
   const game = new Game({
-    terrain, rover, props, dust, sky, audio, hud, engine, rig, scene: engine.scene, input
+    region: App.region, terrain, rover, props, dust, sky, audio, hud, engine, rig, scene: engine.scene, input
   });
   game.tc = App.settings.tc;
 
@@ -193,14 +194,9 @@ function showMenu() {
   App.hud.hideHUD();
   App.input.unlock();
   App.input.showTouch(false);
-  const saved = Save.read();
+  const saved = Save.read(App.region);
   $('btnContinue').hidden = !saved;
-  $('menuBrief').innerHTML =
-    `Two hundred and fourteen days ago the seismic station <b>VANTAGE-3</b> sent four seconds of
-     empty carrier and stopped. You are the operator of <b>K-9 KESTREL</b>, put down by descent
-     sled on the floor of <b>Anaximenes</b> at seventy-two degrees north.<br><br>
-     Survey the basin. Restore the relay chain. Find out what is under the floor —
-     and why the dossier does not say what the station was <em>for</em>.`;
+  $('menuBrief').innerHTML = App.region.brief;
 }
 
 function startGame(freeRoam, loadSaved) {
@@ -216,11 +212,12 @@ function startGame(freeRoam, loadSaved) {
   App.dust.clear();
   App.props.levelPad();
 
-  App.rover.placeAt(HOME.x - 8, HOME.z - 7, 2.3);
+  const sp = App.region.spawn;
+  App.rover.placeAt(sp.x, sp.z, sp.heading);
   App.rig.setMode(CAM.CHASE, App.rover);
 
   let resumed = false;
-  if (loadSaved) resumed = App.game.load(Save.read());
+  if (loadSaved) resumed = App.game.load(Save.read(App.region));
 
   App.state = ST.PLAY;
   App.input.lock();
@@ -259,7 +256,7 @@ function closePanels() {
 }
 
 function wireUI() {
-  $('btnPlay').onclick = () => { Save.clear(); startGame(false, false); };
+  $('btnPlay').onclick = () => { Save.clear(App.region); startGame(false, false); };
   $('btnContinue').onclick = () => startGame(false, true);
   $('btnFreeRoam').onclick = () => startGame(true, false);
   $('btnControls').onclick = () => openPanel('help', ST.HELP);
@@ -268,7 +265,7 @@ function wireUI() {
   $('btnHelp').onclick = () => { $('pause').classList.add('hidden'); openPanel('help', ST.HELP); };
   $('btnCodexFromPause').onclick = () => { $('pause').classList.add('hidden'); openPanel('codex', ST.CODEX); };
   $('btnAbort').onclick = () => {
-    Save.write(App.game.save());
+    Save.write(App.region, App.game.save());
     for (const id of ['pause', 'codex', 'help']) $(id).classList.add('hidden');
     showMenu();
   };
@@ -279,7 +276,7 @@ function wireUI() {
   };
   // one close path, so the ESC button and the Escape key cannot diverge
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = closePanels);
-  addEventListener('beforeunload', () => { if (App.game && App.state >= ST.PLAY) Save.write(App.game.save()); });
+  addEventListener('beforeunload', () => { if (App.game && App.state >= ST.PLAY) Save.write(App.region, App.game.save()); });
 }
 
 /* ---------------- settings ---------------- */
@@ -752,7 +749,7 @@ function stepWorld(dt, raw, input) {
   hud.update(dt, game, rover, sky, rig);
 
   /* ---- autosave ---- */
-  if (!App._saveT || App.elapsed - App._saveT > 20) { App._saveT = App.elapsed; Save.write(game.save()); }
+  if (!App._saveT || App.elapsed - App._saveT > 20) { App._saveT = App.elapsed; Save.write(App.region, game.save()); }
 }
 
 /** At 72° N the sun never gets high and never sets — it circles the horizon,
@@ -790,4 +787,4 @@ boot().catch((err) => {
   if (t) { t.textContent = 'LINK FAILURE — ' + err.message; t.style.color = '#ff5f56'; }
 });
 
-void PLAYABLE_R; void QUALITY; void Props;
+void PLAYABLE_R; void QUALITY; void Props; void MASSIF;
