@@ -133,6 +133,8 @@ export const CODEX = [
 
 /* ---------------- sample taxonomy ---------------- */
 export const SAMPLES = {
+  cable: { name: 'GEOPHONE CABLE', rare: true, value: 4, desc: 'Tinned lead in a glass jacket, strung between the posts. The ends are clean-cut — not broken.', unlock: 'ls-posta' },
+  core:  { name: 'MEMORY CORE', rare: true, value: 8, desc: 'Solid state. Every cycle accounted for. The last entry is a count.', unlock: 'ls-hub' },
   soil: { name: 'SURFACE SOIL', rare: false, value: 1, desc: 'Mature highland soil. 40 % void, 3 % meteoritic iron, agglutinate-rich.' },
   breccia: { name: 'IMPACT BRECCIA', rare: false, value: 2, desc: 'Shattered rock welded by shock. Someone else\'s crater, delivered here.' },
   ilmenite: { name: 'ILMENITE CONCENTRATE', rare: false, value: 2, desc: 'FeTiO₃. The reason anyone would ever want to own this basin.' },

@@ -265,6 +265,13 @@ export class Game {
     const done = this.mission;
     if (!done) return;
     const R = this.region;
+    // Per-mission bookkeeping: objective ids may repeat across a region's
+    // missions (Anaximenes never did, Long Shadow does — 'reach'/'recover' in
+    // L02 and L03). A stale map would pre-complete the new mission's
+    // objectives and skip their unlock hooks, so it resets on every
+    // transition. (Save/load restores it for mid-mission resumes.)
+    this.objDone = {};
+    this.counts = {};
     const next = R.missions[R.missions.findIndex(m => m.id === done.id) + 1] || null;
     this.missionId = next ? next.id : null;
     this.log(`${done.tag} COMPLETE — ${done.name}`, 'good');

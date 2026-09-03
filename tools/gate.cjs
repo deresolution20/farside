@@ -495,9 +495,17 @@ async function findRelaySites() {
   }
   await shot('03_m01_drive');
   {
-    const found = await scanHere();
+    // G tap -> scan-done emits synchronously -> the 1.4 s advance() timer,
+    // which resets objDone/counts for the next mission (Phase 2 task 6:
+    // objective ids may repeat across missions). Capture the bookkeeping
+    // before that reset, then let the scan animation run out.
+    await waitPower(10, 60000);
+    await tap('KeyG');
     const s = await snap();
-    result('m01: G scans, mission complete', s.objDone.scan === true, found.length + ' returns found');
+    await sleep(2900);
+    const found = await js(`const g = window.FARSIDE.game;
+      return g.anoms.filter((a) => a.found && !a.taken).length;`);
+    result('m01: G scans, mission complete', s.objDone.scan === true, found + ' returns found');
   }
   await shot('04_m01_scan');
 
@@ -539,8 +547,11 @@ async function findRelaySites() {
   await shot('06_m02_excavate');
 
   await driveTo(96, 214, 7, 180000);
+  // Offload -> home1 objective -> the 1.4 s advance() timer resets
+  // objDone (Phase 2 task 6), so bay-empty + the mission transition below
+  // are the evidence of the offload objective.
   await poll('bay drained at sled (offload)',
-    `const g = window.FARSIDE.game; return g && g.bay.length === 0 && g.objDone.home1 ? true : null;`, 60000);
+    `const g = window.FARSIDE.game; return g && g.bay.length === 0 ? true : null;`, 60000);
   await poll('missionId=channel',
     `const g = window.FARSIDE.game; return g && g.missionId === 'channel' ? true : null;`, 30000);
   await waitCard('mission 03 card shown');

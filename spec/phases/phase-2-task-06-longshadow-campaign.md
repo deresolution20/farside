@@ -61,11 +61,90 @@ already exist from tasks 2/4). Add the two new `SAMPLES` (`cable`, `core`) to
 
 ## Verification gate (run before merge)
 
-- [ ] Acceptance criteria all met
-- [ ] Full Long Shadow playthrough verified with screenshots
-- [ ] Gate green (21/21)
-- [ ] `node --check` green
-- [ ] Spec still matches code (no drift)
+- [x] Acceptance criteria all met
+- [x] Full Long Shadow playthrough verified with screenshots (17 shots, `.shots/ls06_*`)
+- [x] Gate green (21/21, fresh profile, post engine-fix)
+- [x] `node --check` green
+- [x] Spec still matches code (no drift)
 
 ---
-_Result / notes:_
+_Result / notes (2026-09-02):_
+
+**Result: PASS — `tools/ls06-verify.cjs` 36/36 (fresh profile, full LS campaign)
++ ANAX GATE 21/21. One logical commit.**
+
+Delivered:
+- `src/game/regions.js` (Long Shadow sections only): `LS_MISSIONS` grew from the
+  2-entry stub to the full §3.6 campaign — L02 `ls-echo` ECHO (reach postA <26;
+  `station-interact` special postA, `unlocks postA`, `unlock ls-posta`; `sample`
+  special cable), L03 `ls-quiet` THE QUIET ONE (reach postB <26; recover postB →
+  ls-postb; `find3` count 3), L04 `ls-silence` SILENCE (reach hub <30; record
+  hub → ls-hub; `extract` special core with `unlocks hub` — record AND deep both
+  declare `unlocks: 'hub'`, the drumhead pattern), L05 `ls-count` THE COUNT
+  (reach breach <26; transmit). L01 byte-identical; ending card THE COUNT
+  (tag/name/brief) already present from task 2, verified, untouched.
+- `LS_CODEX` +4 entries — `ls-posta` (STATION LOG: the 03:14 count, the call to
+  VANTAGE-3, the four-second carrier), `ls-postb` (STATION LOG: last entry, cut
+  mid-transmission), `ls-hub` (FIELD NOTE: timestamped count, unbroken since
+  day 612), `ls-count` (ENDING: two sites, one count, started the day you
+  landed). 6 total; `ls-brief`/`ls-memo` (`start: true`) untouched.
+- `src/game/lore.js`: `SAMPLES += cable` (GEOPHONE CABLE, rare, value 4,
+  `unlock 'ls-posta'`), `core` (MEMORY CORE, rare, value 8, `unlock 'ls-hub'`).
+  Inserted at the top of the object so `git diff` is **additions only**; Anax
+  `MISSIONS`/`CODEX`/`ENDING_CARD` and all nine pre-existing `SAMPLES` entries
+  byte-identical (node deep-compare vs `HEAD:src/game/lore.js`).
+
+**Deviation 1 — required by the spec data: per-mission objective reset in
+`src/game/gameplay.js` (out of the task's file allowlist, documented).**
+§3.6 deliberately reuses objective ids across Long Shadow missions (L02 and L03
+both use `reach`/`recover`), and the AC pins those ids ("objectives exactly as
+§3.6 (ids…)"). `advance()` never cleared `objDone`/`counts`, so on L02 → L03 the
+new mission's `reach`/`recover` were pre-completed: `complete()` no-opped, the
+`ls-postb` unlock hook never fired, and hold-E recovery was inert (observed in
+the first live run: `rec:true` stale, `visited:true`, `codex:false`). Anaximenes
+never collided (its mission ids are unique), which is why 21/21 never saw it.
+Fix: `advance()` resets `objDone = {}` / `counts = {}` at the transition
+(2 lines + comment). Save/load already round-trips per-mission state, so resumes
+are intact; legacy Anax v3 blobs are unaffected. Verified: gate 21/21 fresh
+profile, including the save round-trip and 12-codex resume. Renaming the ids
+instead would have broken the AC/§3.6 contract, so the engine is the correct
+fix site.
+
+**Deviation 2 — mechanical driver-side timing in `tools/gate.cjs` (2 checks).**
+With the reset, the bookkeeping map no longer survives the 1.4 s advance
+window, so two checks read it at the mutation instant instead of after:
+m01 "G scans" captures `objDone.scan` immediately after the G tap (then lets the
+scan animation finish); m02 offload evidence becomes bay-empty + the existing
+`missionId=channel` transition check (replacing `objDone.home1`). Assertion
+intent and all other 19 checks unchanged.
+
+Verification (final code state, clean profiles each):
+- `node --check` green on every `src/`, `vendor/three/`, `server.js`, `tools/*.cjs`.
+- `node tools/bake-diff.cjs` PASS (Anax macro/far/det byte-identical, determinism).
+- LS full playthrough (driver kept OUTSIDE the repo at `/tmp/opencode/ls06-verify.cjs`
+  to respect the file allowlist): select LONG SHADOW → in-page data checks
+  (5 missions in order with exact §3.6 objective field sets; 6 codex with start
+  flags; ending THE COUNT; transmit `{sample:'core', unlocks:['ls-count']}`) →
+  BEGIN DESCENT → L01 (T deploy, real 166 m drive, G scan) → L02 ECHO (reach
+  7.7 m; HOLD E → ls-posta; scan + drill cable: taken + GEOPHONE CABLE in bay) →
+  L03 THE QUIET ONE (reach 7.5 m; HOLD E → ls-postb; 3 real drills) → L04
+  SILENCE (reach 9.5 m; `RECOVER MASTER RECORD` prompt + `tagOpen('hub')=true`
+  pre-recovery; HOLD E → record + **gate still open**; scan; drumhead
+  settle-search deep extraction → core taken, `deep` done, payload taken; then
+  `tagOpen('hub')=false` and the core is gone from the field) → L05 THE COUNT
+  (reach breach 7.2 m; sled offload with core in bay → transmit, ls-count) →
+  ending card **THE COUNT** → free survey with exactly the 6 `ls-*` codex
+  entries (in-page set check) → `farside.longshadow.v1` ends
+  `{missionId:null, payloadTaken:true, core+cable [id,1] pairs}` → reload →
+  menu `SURVEY COMPLETE — FREE SURVEY` (selection persisted) → RESUME → free
+  survey, 6 codex + payload kept. Zero page JS errors in both sessions. 36/36.
+- `tools/gate.cjs` **GATE PASS (21/21)** fresh profile — Anax campaign, save
+  round-trip, 12-codex resume all unchanged.
+- Driver note: the L03 sample hunt routes straight to the nearest unscanned
+  return (sparse 30-sample field + 30°+ outer wall made blind 70 m wandering
+  fail); the game path — 78 m scan, drill, objective — still does all the
+  finding, same as the gate's relay/massif site selection.
+- Evidence: `.shots/ls06_01…17` (menu, cards, drive, both records, cable,
+  samples, hub, core, breach, THE COUNT ending, free survey, complete-status
+  menu, resume). Curation into `spec/evidence/phase-2/` happens in task 7.
+

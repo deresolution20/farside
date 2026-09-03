@@ -3,9 +3,9 @@
    ------------------------------------------------------------
    The Anaximenes bundle wraps the existing constants (props,
    content, lore) verbatim and carries the pylon/pipe positions
-   that used to be hardcoded in main.js. The Long Shadow record
-   is a stub: its world data is initial (task 5 retunes the
-   terrain and props) and its campaign grows in task 6.
+   that used to be hardcoded in main.js. The Long Shadow record is
+   complete: tuned world data (task 5) and the 5-mission campaign,
+   THE COUNT ending and 6-entry codex (tasks 2/6).
    ============================================================ */
 import { P_ANAXIMENES } from '../world/bake.js';
 import { HOME } from '../world/props.js';
@@ -97,7 +97,8 @@ const ANAXIMENES = {
 };
 
 /* ------------------------------------------------------------
-   THE LONG SHADOW — stub (tasks 5 and 6 finish it)
+   THE LONG SHADOW — world data tuned (task 5); campaign L01–L05,
+   THE COUNT ending, and the 6 codex entries (tasks 2 and 6)
    ------------------------------------------------------------ */
 const LS_CODEX = [
   {
@@ -118,6 +119,38 @@ const LS_CODEX = [
       `Do not dig. If the returns suggest structure, increase the sampling cadence and await instruction. Under no circumstances is excavation to be attempted at this site. The site is a recorder, not a resource.`,
       `This directive was never rescinded. That is the first thing you will want to ask. Nobody on the Authority side will answer it.`
     ]
+  },
+  {
+    id: 'ls-posta', tag: 'STATION LOG', title: 'POST A · SUN-DAY 612', meta: 'LOCAL STORE · RECOVERED FROM POST A',
+    body: [
+      `03:14. The geophones heard a count. Not knocking, not a pulse — a count. Even period, no drift, incrementing one by one. The array logged it until the buffer ran out, and the buffer was not long enough.`,
+      `I called VANTAGE-3 on the annex procedure. A hundred kilometres away, and not required to be listening, per the same annex.`,
+      `The reply was four seconds of carrier, no payload. When the carrier stopped, the count was still running. That is the whole log. That is what I am logging.`
+    ]
+  },
+  {
+    id: 'ls-postb', tag: 'STATION LOG', title: 'POST B · SUN-DAY 612', meta: 'LOCAL STORE · RECOVERED FROM POST B · INCOMPLETE',
+    body: [
+      `Post A is not answering. The line tests clean.`,
+      `The count is running here too. Same period as Post A's log, to the nearest tenth. I did not do the arithmetic on what that would mean, and I am not going to.`,
+      `Requesting recall of the survey directive. The site is a recorder, not a — `
+    ]
+  },
+  {
+    id: 'ls-hub', tag: 'FIELD NOTE', title: 'THE MASTER RECORD', meta: 'ARRAY HUB · CONSOLE STORE · 9 m SUBSURFACE',
+    body: [
+      `The hub's console was buried under its own dead feed and fed from the tap like everything else. The tap has been dead since day 612. The record was running.`,
+      `It is a count. Timestamped, unbroken since the day-612 burst — every entry carries its own clock, and there are no gaps. Not through the dark years, not now, not while I watched the last one write itself.`,
+      `It is not counting anything we sent it to count.`
+    ]
+  },
+  {
+    id: 'ls-count', tag: 'ENDING', title: 'THE COUNT', meta: 'FINAL ENTRY · UPLINK LOG',
+    body: [
+      `Two sites. One count. Same period to the nearest tenth, a hundred kilometres apart, in two basins, through two independent arrays that were never on the same manifest.`,
+      `It was never a signal. A signal is sent. This is kept. A count is a promise: somebody set the counter, and somebody is waiting for it to finish.`,
+      `It started the day you landed. In both basins.`
+    ]
   }
 ];
 
@@ -132,11 +165,39 @@ const LS_MISSIONS = [
     ]
   },
   {
-    // Stub: L02 exists so completing L01 advances to it (save missionId
-    // 'ls-echo') instead of ending the survey. Task 6 grows its content.
-    id: 'ls-echo', tag: 'MISSION 02', name: 'THE ECHO',
-    brief: `The sweep is done and the posts are out there somewhere across the terraces, dark and patient. The directive said: listen, and do not dig.`,
-    objectives: []
+    id: 'ls-echo', tag: 'MISSION 02', name: 'ECHO',
+    brief: `Post A sits on the middle terrace, mast tilted, door open on three years of static. Its geophone line was cut between the posts, and its local store never made the carrier — what the post heard at 03:14, what it called out, and what answered are in that store. Reach the post, recover the record, and take the cable out.`,
+    objectives: [
+      { id: 'reach', type: 'distance', ref: 'postA', op: '<', v: 26, text: 'Reach post A' },
+      { id: 'recover', type: 'event', on: 'station-interact', special: 'postA', unlocks: 'postA', unlock: 'ls-posta', text: 'Recover the post record', hint: 'hold E at the post' },
+      { id: 'cable', type: 'event', on: 'sample', special: 'cable', text: 'Extract the geophone cable' }
+    ]
+  },
+  {
+    id: 'ls-quiet', tag: 'MISSION 03', name: 'THE QUIET ONE',
+    brief: `Post B is on the shadowed floor, further across the basin, and its store ends in the middle of a sentence. Recover the record, then put the drill back on the floor: three subsurface returns, minimum, before you move on. The directive said listen. It said nothing about what to do with what you hear.`,
+    objectives: [
+      { id: 'reach', type: 'distance', ref: 'postB', op: '<', v: 26, text: 'Reach post B' },
+      { id: 'recover', type: 'event', on: 'station-interact', special: 'postB', unlocks: 'postB', unlock: 'ls-postb', text: 'Recover the post record', hint: 'hold E at the post' },
+      { id: 'find3', type: 'count', on: 'sample', count: 3, text: 'Excavate 3 subsurface returns' }
+    ]
+  },
+  {
+    id: 'ls-silence', tag: 'MISSION 04', name: 'SILENCE',
+    brief: `The array hub is where the whole network drained into: a mast ring at the rim base, a console buried under its own dead feed. The master record is in the store, and something heavy is under the floor beside it. Recover the master record, and extract the core. Whichever of the two you finish last, the hub closes with it.`,
+    objectives: [
+      { id: 'reach', type: 'distance', ref: 'hub', op: '<', v: 30, text: 'Reach the array hub' },
+      { id: 'record', type: 'event', on: 'station-interact', special: 'hub', unlocks: 'hub', unlock: 'ls-hub', text: 'Recover the master record', hint: 'hold E at the hub' },
+      { id: 'deep', type: 'event', on: 'extract', special: 'core', unlocks: 'hub', text: 'Extract the memory core' }
+    ]
+  },
+  {
+    id: 'ls-count', tag: 'MISSION 05', name: 'THE COUNT',
+    brief: `The wall has one open seam: the breach, the low sector where it stops dead. Reach it. Then put the record where it belongs — offloaded at the sled, transmitted before the uplink closes. Two sites, one count. Let the Authority count it back.`,
+    objectives: [
+      { id: 'breach', type: 'distance', ref: 'breach', op: '<', v: 26, text: 'Reach the breach' },
+      { id: 'transmit', type: 'event', on: 'transmit', text: 'Return to the sled and transmit' }
+    ]
   }
 ];
 
