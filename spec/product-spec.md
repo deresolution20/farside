@@ -33,8 +33,10 @@ headlessly (the gate), iterated instantly, and played anywhere a browser tab run
 ## 3. Success criteria (product-level, testable)
 - [ ] A first-time player can play the full game (title → ending) with no docs beyond
       the README (controls + how to run).
-- [ ] The gate (`tools/gate.cjs`) passes **21/21, exit 0**: full 5-mission campaign from a
-      clean profile, ending card, save round-tripped into free survey.
+- [ ] The gate (`tools/gate.cjs`) passes **28/28, exit 0**: full Anaximenes campaign from a
+      clean profile (ending card, save round-tripped into free survey), plus the menu region
+      picker, A→B→A region swap, Long Shadow L01 playable with its own save round-trip, and
+      Long Shadow bake determinism.
 - [ ] `node --check` green on all JS; the page loads fully offline.
 - [ ] A full playthrough (5 missions + ending) takes 30–50 minutes.
 - [ ] Every mission has its signature moment; the ending (transmit the record) answers
@@ -148,7 +150,7 @@ when flipped · Tab codex · Esc pause. Phone: twin thumbsticks + action buttons
 |---|-------|------------------------------------|--------|
 | 0 | Rebase onto the browser codebase | browser codebase vendored, game plays end-to-end in a tab, gate green with screenshot evidence | done |
 | 1 | Data-driven missions | objective ids/logic live in mission data (not `gameplay.js`), `missionIdx` positional gates gone, new mission addable as pure data, saves survive (or `KEY` bumped) | done |
-| 2 | Regions / levels | `bakeTerrain()` parameterised; 2+ selectable named regions on the menu, each with its own campaign + save slot | planned |
+| 2 | Regions / levels | `bakeTerrain()` parameterised; 2+ selectable named regions on the menu, each with its own campaign + save slot | done (2026-09-02, gate 28/28) |
 | 3 | Planets & content | planet = pure data (gravity, sky, terrain, campaign); 2+ new worlds playable; expanded mission content | planned |
 
 ## 8. Open questions / risks
@@ -196,3 +198,27 @@ _Changelog (update on every phase close — fights spec-code drift):_
   handle; the project MIT licence dropped (three.js keeps its own); git history squashed to
   a single commit. Gate re-run **21/21, exit 0**; evidence regenerated in
   `spec/evidence/phase-1/`.
+- 2026-09-02: **Phase 2 (regions / levels) closed.** The world is data: `bakeTerrain(report, P)` /
+  `baseHeight(x, z, P)` in `src/world/bake.js` take a per-region parameter bundle, and new
+  `src/game/regions.js` ships `REGIONS = [ANAXIMENES, LONGSHADOW]` — each region is a pure-data
+  record (terrain P, spawn, landmarks, props, anomalies, missions, codex, ending, save key).
+  `tools/bake-diff.cjs` keeps Anaximenes byte-identical against a frozen pre-Phase-2 copy of the
+  bake math (strict float equality + determinism) — run after every worldgen touch. Saves are
+  per-region slots (`farside.anaximenes.v3` — NOT bumped, Anaximenes worldgen is unchanged;
+  `farside.longshadow.v1` new); settings moved to the global key `farside.set` (the selected
+  region rides there, one-time migration). `Game` is region-bound (`reset(freeRoam, region)`);
+  `stationVisited`/`drumTaken` → `contentVisited`/`payloadTaken` + per-objective `deep` flag,
+  `o.unlock` hook, event payloads — all load-migrated, no legacy blob broke, no key bump. The
+  menu gained a two-card region picker (`#regionCards`, per-card save-derived status, its own
+  `#regionload` sheet); switching is menu-only, the save is the exit. `Props` gained
+  `buildPost`/`buildHub` for the Long Shadow listening array. **THE LONG SHADOW** — a high-rim,
+  shadowed basin entered through a wall breach — carries its own 5-mission campaign (THE LONG
+  SHADOW → ECHO → THE QUIET ONE → SILENCE → THE COUNT), 6 codex entries, cable/core samples, and
+  the ending card THE COUNT (two basins, one count). Engine fix found by the data: `advance()`
+  now resets `objDone`/`counts` per mission (Long Shadow deliberately reuses the `reach`/
+  `recover` objective ids across L02/L03; Anaximenes ids never collide). The gate grew 21 →
+  **28 checks** (existing campaign + save round-trip unchanged first, then: both menu cards with
+  statuses, A→Long Shadow→A swap, Long Shadow L01 playable, `farside.longshadow.v1` round-trip
+  into L02, Anaximenes save intact across the swap, Long Shadow bake determinism — two in-page
+  bakes, 1000 strictly-equal samples) — **GATE PASS (28/28), exit 0** from a clean profile;
+  evidence in `spec/evidence/phase-2/`.

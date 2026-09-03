@@ -22,48 +22,48 @@ unlock on completion); `station-interact`/`sample` events carry payloads;
 
 ## Acceptance criteria (contract — MUST be testable)
 
-- [ ] `reset(freeRoam = false, region)` binds `this.region = region`; codex seed
+- [x] `reset(freeRoam = false, region)` binds `this.region = region`; codex seed
       set = `region.codex.filter(c => c.start)`; `missionId =
       region.missions[0].id`. Constructor passes `ctx.region` through (main.js
       already sends it — task 2).
-- [ ] Zero static imports/references of `MISSIONS`, `CODEX`, `ENDING_CARD`,
+- [x] Zero static imports/references of `MISSIONS`, `CODEX`, `ENDING_CARD`,
       `CONTENT`, `LANDMARKS` (or the station/massif/home literals) in
       `gameplay.js` — all via `this.region` (grep).
-- [ ] `contentVisited: {[key]: bool}` replaces `stationVisited`; the hold-E loop
+- [x] `contentVisited: {[key]: bool}` replaces `stationVisited`; the hold-E loop
       sets `this.contentVisited[c.key]` and emits `emit('station-interact',
       c.key)`; the prompt loop iterates `this.region.content` gated by
       `!this.contentVisited[c.key]`.
-- [ ] `buildAnomalies(anoms)` is data-driven per §3.1: seed `anoms.seed`, pipe
+- [x] `buildAnomalies(anoms)` is data-driven per §3.1: seed `anoms.seed`, pipe
       rings around `landmarks[anoms.pipes.anchor]` with `deep: true` (exact
       radii/angles/jitter of today), scatter `anoms.scatter`, specials at
       `landmarks[s.at] + (dx, dz)` carrying `type/depth/special/unlocks/deep`.
       Same draw order (pipes → scatter → specials) → Anaximenes field
       bit-identical.
-- [ ] `a.special === 'drum'` appears nowhere; scan deep count, arm yaw, and the
+- [x] `a.special === 'drum'` appears nowhere; scan deep count, arm yaw, and the
       extract block use `a.deep`; the extract block sets
       `this.payloadTaken = true` when `a.special === this.region.transmit.sample`
       and emits `emit('extract', a.special)`.
-- [ ] `emit('sample', a ? a.special : null)` (payload added; no Anaximenes
+- [x] `emit('sample', a ? a.special : null)` (payload added; no Anaximenes
       objective filters `sample`, so no behavior change).
-- [ ] `complete(objId)` unlocks `o.unlock` when the objective carries it (new
+- [x] `complete(objId)` unlocks `o.unlock` when the objective carries it (new
       hook; Anaximenes objectives never set it).
-- [ ] Home-service transmit block: `if (this.payloadTaken) { this.transmitted =
+- [x] Home-service transmit block: `if (this.payloadTaken) { this.transmitted =
       true; for (const id of this.region.transmit.unlocks) this.unlock(id);
       this.emit('transmit'); }` (bay-empty requirement unchanged).
-- [ ] `save()` calls `Save.write(this.region, blob)` and **returns** the blob —
+- [x] `save()` calls `Save.write(this.region, blob)` and **returns** the blob —
       `advance()`'s `this.save()` now really writes. In-page check: fresh
       Anaximenes run, deploy, drive, scan → mission complete → immediately
       `localStorage['farside.anaximenes.v3']` holds `missionId: 'listening'`
       (next mission) without waiting for the 20 s autosave.
-- [ ] Blob fields `contentVisited`/`payloadTaken`; `load(d)` migrates legacy:
+- [x] Blob fields `contentVisited`/`payloadTaken`; `load(d)` migrates legacy:
       `d.contentVisited || (d.stationVisited ? { station: true } : {})` and
       `d.payloadTaken ?? !!d.drumTaken`; `load()` validates `missionId` against
       `this.region.missions`.
-- [ ] Grep contract: `grep -n "== 'drum'\|drumTaken\|stationVisited" src/` →
+- [x] Grep contract: `grep -n "== 'drum'\|drumTaken\|stationVisited" src/` →
       zero hits except the two documented `load()` migration reads.
-- [ ] Gate green (21/21) after updating the gate's save-blob field assertions to
+- [x] Gate green (21/21) after updating the gate's save-blob field assertions to
       the renamed fields.
-- [ ] `node --check` green.
+- [x] `node --check` green.
 
 ## Context the worker needs (and ONLY this)
 
@@ -81,10 +81,10 @@ unlock on completion); `station-interact`/`sample` events carry payloads;
 
 ## Verification gate (run before merge)
 
-- [ ] Acceptance criteria all met
-- [ ] Gate green (21/21)
-- [ ] `node --check` green
-- [ ] Spec still matches code (no drift)
+- [x] Acceptance criteria all met
+- [x] Gate green (21/21)
+- [x] `node --check` green
+- [x] Spec still matches code (no drift)
 
 ---
 _Result / notes (2026-09-01):_

@@ -727,6 +727,211 @@ async function findRelaySites() {
     result('save/load round-trip into free survey', false, e.message);
   }
 
+  /* ============ PHASE 2: region switching + LONG SHADOW ============ */
+  // Back to the menu via pause -> ABORT (it persists the Anaximenes
+  // free-survey blob — the same state the round-trip just loaded).
+  await tap('Escape');
+  await poll('pause overlay visible (region checks)',
+    `return !document.getElementById('pause').classList.contains('hidden') ? true : null;`, 10000);
+  await js(`document.getElementById('btnAbort').click(); return true;`);
+  await poll('menu visible with region cards',
+    `const w = document.getElementById('regionCards'); return w && w.children.length === 2 ? true : null;`, 15000);
+  await shot('17_menu_regions');
+
+  // G22 — both region cards present, each with a status line from its save
+  {
+    const cards = JSON.parse(await js(`
+      const out = [];
+      for (const id of ['region-anaximenes', 'region-longshadow']) {
+        const c = document.getElementById(id);
+        if (!c) { out.push(null); continue; }
+        const st = c.querySelector('.rc-status');
+        out.push({ id, name: c.querySelector('.rc-name').textContent.trim(),
+                   status: st ? st.textContent.trim() : '' });
+      }
+      return JSON.stringify(out);
+    `));
+    const [a, b] = cards;
+    result('G22: menu shows both region cards with status lines',
+      a && b && a.status !== '' && b.status !== '',
+      (a ? a.name + ' [' + a.status + ']' : 'ANAX missing') + ' | ' + (b ? b.name + ' [' + b.status + ']' : 'LS missing'));
+  }
+
+  // G23 — select THE LONG SHADOW: loading sheet, then back at the menu with
+  // the world swapped (rim-crest vs floor sanity on the live terrain)
+  {
+    await js(`document.getElementById('region-longshadow').click(); return true;`);
+    await poll('region loading sheet visible (Long Shadow)',
+      `return !document.getElementById('regionload').classList.contains('hidden') ? true : null;`, 15000);
+    await poll('Long Shadow bake + swap done (menu, region swapped)',
+      `const F = window.FARSIDE;
+       return F && F.state === 1 && F.region && F.region.id === 'longshadow'
+          && document.getElementById('regionload').classList.contains('hidden') ? true : null;`, 120000);
+    const h = JSON.parse(await js(`
+      const t = window.FARSIDE.game.terrain;
+      let crest = -1e9;
+      for (let i = 0; i < 96; i++) {                     // rim band r = 500
+        const ang = (i / 96) * Math.PI * 2;
+        const hh = t.heightAt(Math.cos(ang) * 500, Math.sin(ang) * 500);
+        if (hh != null && hh > crest) crest = hh;
+      }
+      const floor = t.heightAt(0, 0);                    // bowl floor
+      return JSON.stringify({ crest, floor, delta: crest - floor });
+    `));
+    result('G23: selected THE LONG SHADOW -> world swapped (rim crest - floor > 60 m)',
+      h.crest - h.floor > 60,
+      'crest=' + h.crest.toFixed(1) + ' m floor=' + h.floor.toFixed(1) + ' m delta=' + (h.crest - h.floor).toFixed(1) + ' m');
+  }
+
+  // G24 — Long Shadow L01 playable, exactly like Anax m01: card, T deploy,
+  // a ~140 m drive along the heading, one G sweep, mission complete
+  {
+    await js(`document.getElementById('btnPlay').click(); return true;`);
+    await waitCard('Long Shadow mission 01 card shown');
+    await shot('18_ls_card_l01');
+    await js(`document.getElementById('cardGo').click(); return true;`);
+    await poll('LS game state PLAY',
+      `return window.FARSIDE && window.FARSIDE.state === 2 ? true : null;`, 15000);
+
+    await tap('KeyT');
+    await sleep(2500);
+    const sd = await snap();
+    await shot('19_ls_at_rest');
+    let driveNote = '';
+    if (sd && sd.objDone.deploy) {
+      const s0 = await snap();
+      const note = await driveTo(s0.x + s0.fx * 140, s0.z + s0.fz * 140, 6, 240000);
+      driveNote = String(note).includes('reseated') ? ' [reseated]' : '';
+    }
+    await shot('20_ls_drive');
+    {
+      // G tap -> scan-done emits synchronously -> capture the bookkeeping
+      // before the 1.4 s advance() timer resets it (Phase 2 task 6:
+      // objective ids may repeat across missions).
+      await waitPower(10, 120000);
+      await tap('KeyG');
+      const s = await snap();
+      const s1 = await snap();
+      const dHome = Math.hypot(s1.x - 241.7, s1.z - 203.6);
+      result('G24: Long Shadow L01 playable (deploy, >120 m, G scan, mission complete)',
+        s.objDone.deploy === true && s.objDone.drive === true && s.objDone.scan === true && dHome > 120,
+        Math.round(dHome) + ' m' + driveNote + ' deploy=' + s.objDone.deploy + ' drive=' + s.objDone.drive + ' scan=' + s.objDone.scan);
+    }
+  }
+
+  // G25 — the Long Shadow save slot is written, now on L02 (ls-echo)
+  {
+    await poll('LS advanced to L02 (ls-echo)',
+      `const g = window.FARSIDE.game; return g && g.missionId === 'ls-echo' ? true : null;`, 30000);
+    await js(`window.FARSIDE.game.save(); return true;`);
+    const blob = await poll('farside.longshadow.v1 present on ls-echo',
+      `try {
+         const d = JSON.parse(localStorage.getItem('farside.longshadow.v1'));
+         return d && d.missionId === 'ls-echo' ? JSON.stringify(d) : null;
+       } catch (e) { return null; }`, 10000);
+    const d = JSON.parse(blob);
+    result('G25: farside.longshadow.v1 written with missionId ls-echo',
+      d.missionId === 'ls-echo', 'missionId=' + d.missionId);
+  }
+
+  // G26 — reload: selection persisted, RESUME lands back in Long Shadow L02
+  await send('WebDriver:Navigate', { url: URL });
+  {
+    try {
+      await poll('btnContinue visible (Long Shadow save detected)',
+        `const b = document.getElementById('btnContinue'); return b && !b.disabled && b.offsetParent !== null ? true : null;`, 120000);
+      await js(`document.getElementById('btnContinue').click(); return true;`);
+      await poll('resumed into Long Shadow L02',
+        `const F = window.FARSIDE, g = F.game;
+         return F.region && F.region.id === 'longshadow' && g && g.missionId === 'ls-echo' ? true : null;`, 30000);
+      const s = await snap();
+      result('G26: reload -> RESUME SURVEY -> Long Shadow L02, payloadTaken false',
+        s.missionId === 'ls-echo' && s.payloadTaken === false,
+        'missionId=' + s.missionId + ' payloadTaken=' + s.payloadTaken);
+      await shot('21_ls_l02_resumed');
+    } catch (e) {
+      result('G26: reload -> RESUME SURVEY -> Long Shadow L02, payloadTaken false', false, e.message);
+    }
+  }
+
+  // G27 — switch back to ANAXIMENES: its round-trip save must be intact and
+  // the live world must be the Anaximenes basin again
+  {
+    await tap('Escape');
+    await poll('pause overlay visible (switch back)',
+      `return !document.getElementById('pause').classList.contains('hidden') ? true : null;`, 10000);
+    await js(`document.getElementById('btnAbort').click(); return true;`);
+    await poll('menu visible with region cards (again)',
+      `const w = document.getElementById('regionCards'); return w && w.children.length === 2 ? true : null;`, 15000);
+    await js(`document.getElementById('region-anaximenes').click(); return true;`);
+    await poll('Anaximenes bake + swap done (menu, region swapped back)',
+      `const F = window.FARSIDE;
+       return F && F.state === 1 && F.region && F.region.id === 'anaximenes'
+          && document.getElementById('regionload').classList.contains('hidden') ? true : null;`, 120000);
+    const [blob, sx] = await Promise.all([(
+      poll('farside.anaximenes.v3 intact (free-survey round-trip blob)',
+        `try {
+           const d = JSON.parse(localStorage.getItem('farside.anaximenes.v3'));
+           return d && d.missionId === null ? JSON.stringify(d) : null;
+         } catch (e) { return null; }`, 10000)
+    ), (
+      js(`const F = window.FARSIDE; return F && F.region && F.region.landmarks ? F.region.landmarks.station.x : null;`)
+    )]);
+    const d = JSON.parse(blob);
+    const drum = d.anoms.find((p) => p[0] === '60,-40');
+    result('G27: switched back to ANAXIMENES: save intact, world swapped (station.x = -236)',
+      d.missionId === null && drum && drum[1] === 1 && sx === -236,
+      'station.x=' + sx + ' missionId=' + d.missionId + ' drum=' + JSON.stringify(drum));
+  }
+
+  // G28 — Long Shadow bake determinism: two fresh in-page bakes of
+  // REGIONS[1].terrain, 1000 random samples strictly equal. The bake runs in
+  // an injected <script type="module">, NOT in the Marionette script realm:
+  // that realm has its own module map AND no import map, so importing
+  // regions.js from there chokes on the bare 'three' specifier in its import
+  // chain (props.js). The injected module script runs in the page's main
+  // realm — import map + the game's live module graph — and stashes the
+  // result on window for the driver to poll. (Pure-math check: reads no
+  // page state, mirrors tools/bake-diff.cjs.)
+  {
+    let raw = null;
+    let det = '';
+    try {
+      await js(`
+        window.__bakeResult = null;
+        const s = document.createElement('script');
+        s.type = 'module';
+        s.textContent = [
+          "const { bakeTerrain } = await import('/src/world/bake.js');",
+          "const { REGIONS } = await import('/src/game/regions.js');",
+          "const P = REGIONS[1].terrain;",
+          "const drain = (g) => { for (;;) { const r = g.next(); if (r.done) return r.value; } };",
+          "const a = drain(bakeTerrain(() => {}, P));",
+          "const b = drain(bakeTerrain(() => {}, P));",
+          "const fields = [[a.macro, b.macro], [a.far, b.far], [a.det, b.det]];",
+          "let n = 0, bad = 0;",
+          "while (n < 1000) {",
+          "  const f = fields[(Math.random() * fields.length) | 0];",
+          "  const i = (Math.random() * f[0].length) | 0;",
+          "  if (!Object.is(f[0][i], f[1][i])) bad++;",
+          "  n++;",
+          "}",
+          "window.__bakeResult = { n, bad };",
+        ].join('\\n');
+        document.head.appendChild(s);
+        return true;
+      `);
+      const s = await poll('in-page LS double-bake finished',
+        `return window.__bakeResult ? JSON.stringify(window.__bakeResult) : null;`, 180000);
+      raw = JSON.parse(s);
+      det = raw.n + ' samples, mismatches=' + raw.bad;
+    } catch (e) {
+      det = e.message;
+    }
+    result('G28: Long Shadow bake determinism (two in-page bakes, 1000 random samples)',
+      raw && raw.n === 1000 && raw.bad === 0, det);
+  }
+
   try { await send('WebDriver:DeleteSession', {}); } catch {}
   done = true;
   const failed = results.filter((r) => !r.ok);

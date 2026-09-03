@@ -18,29 +18,47 @@ the Anaximenes world, saves, and gate are provably untouched.
 
 ## 2. What "done" looks like (phase acceptance criteria)
 
-- [ ] The menu shows two named regions (ANAXIMENES, THE LONG SHADOW); each card shows
+- [x] The menu shows two named regions (ANAXIMENES, THE LONG SHADOW); each card shows
       a per-region status derived from that region's save (no save / in-progress
       mission / complete — free survey); the action buttons act on the selected
-      region. **Proof:** gate checks + menu screenshots in `spec/evidence/phase-2/`.
-- [ ] **Anaximenes worldgen is byte-identical**: `node tools/bake-diff.cjs` exits 0
+      region. **Proof:** G22 (both cards present with status lines), G23/G27
+      (selection drives the world, A→B→A); screenshots `17_menu_regions.png`,
+      `19_ls_at_rest.png` in `spec/evidence/phase-2/`.
+- [x] **Anaximenes worldgen is byte-identical**: `node tools/bake-diff.cjs` exits 0
       (new bake with the Anaximenes bundle vs a frozen pre-Phase-2 copy of the bake
       math, strict float equality on macro/far/det, plus a two-bake determinism
       check). The Anaximenes save key is still `farside.anaximenes.v3` — **not
       bumped** (worldgen unchanged; the save-blob field renames in §3.3 stay
-      backward-compatible via load-time migration instead).
-- [ ] THE LONG SHADOW is a full playable campaign: 5 missions + ending card + free
+      backward-compatible via load-time migration instead). **Proof:** BAKE-DIFF
+      PASS after every worldgen touch and at close; G27 (round-trip free-survey
+      blob intact after the A→B→A swap).
+- [x] THE LONG SHADOW is a full playable campaign: 5 missions + ending card + free
       survey, save slot `farside.longshadow.v1`, anomaly ids coordinate-derived and
-      deterministic (two bakes/instances produce the same field).
-- [ ] Region switching (menu only) works repeatedly (A→B→A): old world removed from
+      deterministic (two bakes/instances produce the same field). **Proof:**
+      task-06 driver run 36/36 (full L01→L05→THE COUNT, fresh profile, notes in
+      `phase-2-task-06-longshadow-campaign.md`), G24–G26 (L01 playable; save
+      round-trip into L02), G28 (two in-page bakes, 1000 strictly-equal samples).
+- [x] Region switching (menu only) works repeatedly (A→B→A): old world removed from
       the scene, new world built, both saves intact, each region's world
-      byte-identical to its first bake.
-- [ ] **Gate:** all pre-existing campaign checks pass unchanged **and** the new
+      byte-identical to its first bake. **Proof:** G23 + G27 in one gate session
+      (A→B then B→A, both save blobs verified), G28 + bake-diff (re-bake
+      identity).
+- [x] **Gate:** all pre-existing campaign checks pass unchanged **and** the new
       region checks (§3.7) pass; `GATE PASS (n/n), EXIT:0` from a clean profile.
-- [ ] `node --check` green on every JS file (including new ones); no new runtime
-      assets; cold start offline still works.
-- [ ] Evidence in `spec/evidence/phase-2/` (menu picker, Long Shadow at rest, L01
+      **Proof:** close run **GATE PASS (28/28), EXIT:0** (clean profile) — diff of
+      `tools/gate.cjs` is a pure append of G22–G28.
+- [x] `node --check` green on every JS file (including new ones); no new runtime
+      assets; cold start offline still works. **Proof:** `node --check` green in
+      every task's verification and at close; no new files under `index.html`'s
+      load set beyond the existing module graph (`regions.js`, `bake.js` already
+      served by the zero-dep static server).
+- [x] Evidence in `spec/evidence/phase-2/` (menu picker, Long Shadow at rest, L01
       card, post, hub, ending); Product Spec phase map + changelog updated;
-      `HANDOFF.md` rewritten for Phase 3.
+      `HANDOFF.md` rewritten for Phase 3. **Proof:** `spec/evidence/phase-2/` —
+      `17_menu_regions.png`, `18_ls_card_l01.png`, `19_ls_at_rest.png` (gate run) +
+      `postA_recovery.png`, `hub_master_record.png`, `ending_the_count.png`
+      (task-06 driver run); Product Spec §7 row 2 + 2026-09-02 changelog; this
+      close's `HANDOFF.md`.
 
 ## 3. Technical design
 
@@ -469,13 +487,13 @@ gate) after **each** task.
 
 | # | Task | difficulty | Blocked by | Status |
 |---|------|-----------|------------|--------|
-| 1 | Parameterize the bake: `src/world/bake.js` (pure math + `bakeTerrain(report, P)`), `terrain.js` imports it, `tools/bake-diff.cjs` identity guard; `P_ANAXIMENES` reproduces the current field byte-identical | hard | – | todo |
-| 2 | Region data + per-region saves: `src/game/regions.js` (Anaximenes bundle verbatim + Long Shadow stub: terrain P, spawn, landmarks, props, anoms, content, 1-mission L01), `src/core/save.js` (per-region keys, global `farside.set` + migration), `src/main.js` boot from `REGIONS[0]`, pylon/pipe positions moved to region data | easy | 1 | todo |
-| 3 | Region-aware `Game`: region binding, `contentVisited`, `payloadTaken` + `deep` flag, `o.unlock` hook, event payloads, `save()` persistence fix, load migrations; grep contract §3.3 | hard | 2 | todo |
-| 4 | World swap + menu picker: `buildWorld()` extraction, `selectRegion()`, `#regionCards` UI + CSS, `#regionload` sheet, `Props(region)`, Long Shadow L01 playable end-to-end | hard | 3 | todo |
-| 5 | Long Shadow world data: final terrain P tuning (slope/crest targets), anomaly config, `buildPost`/`buildHub` + colliders + idle animation in `props.js` | hard | 4 | todo |
-| 6 | Long Shadow campaign: L02–L05 + ending card + 6 codex entries in `regions.js`; `cable`/`core` SAMPLES in `lore.js` (additive) | easy | 5 | todo |
-| 7 | Gate extension (G22–G28), evidence to `spec/evidence/phase-2/`, Product Spec phase map + changelog, HANDOFF rewrite | gate | 6 | todo |
+| 1 | Parameterize the bake: `src/world/bake.js` (pure math + `bakeTerrain(report, P)`), `terrain.js` imports it, `tools/bake-diff.cjs` identity guard; `P_ANAXIMENES` reproduces the current field byte-identical | hard | – 
+| 2 | Region data + per-region saves: `src/game/regions.js` (Anaximenes bundle verbatim + Long Shadow stub: terrain P, spawn, landmarks, props, anoms, content, 1-mission L01), `src/core/save.js` (per-region keys, global `farside.set` + migration), `src/main.js` boot from `REGIONS[0]`, pylon/pipe positions moved to region data | easy | 1 
+| 3 | Region-aware `Game`: region binding, `contentVisited`, `payloadTaken` + `deep` flag, `o.unlock` hook, event payloads, `save()` persistence fix, load migrations; grep contract §3.3 | hard | 2 
+| 4 | World swap + menu picker: `buildWorld()` extraction, `selectRegion()`, `#regionCards` UI + CSS, `#regionload` sheet, `Props(region)`, Long Shadow L01 playable end-to-end | hard | 3 
+| 5 | Long Shadow world data: final terrain P tuning (slope/crest targets), anomaly config, `buildPost`/`buildHub` + colliders + idle animation in `props.js` | hard | 4 
+| 6 | Long Shadow campaign: L02–L05 + ending card + 6 codex entries in `regions.js`; `cable`/`core` SAMPLES in `lore.js` (additive) | easy | 5 
+| 7 | Gate extension (G22–G28), evidence to `spec/evidence/phase-2/`, Product Spec phase map + changelog, HANDOFF rewrite | gate | 6 
 
 ## 6. Out of scope for this phase
 

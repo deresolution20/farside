@@ -20,31 +20,31 @@ already exist from tasks 2/4). Add the two new `SAMPLES` (`cable`, `core`) to
 
 ## Acceptance criteria (contract — MUST be testable)
 
-- [ ] Long Shadow `missions` has exactly 5, in order: `ls-arrival` (L01 from
+- [x] Long Shadow `missions` has exactly 5, in order: `ls-arrival` (L01 from
       task 2), `ls-echo`, `ls-quiet`, `ls-silence`, `ls-count`, with the
       objective records exactly as §3.6 (ids, tags, names, briefs, objective
       lists incl. `special`/`unlocks`/`unlock` fields).
-- [ ] Long Shadow `codex` has exactly 6 entries: `ls-brief` (`start: true`),
+- [x] Long Shadow `codex` has exactly 6 entries: `ls-brief` (`start: true`),
       `ls-memo` (`start: true`), `ls-posta`, `ls-postb`, `ls-hub`, `ls-count`;
       each `desc`/`unlock` text per §3.6 (short prose, in-universe).
-- [ ] Long Shadow `ending` = THE COUNT card (tag/name/brief per §3.6).
-- [ ] `lore.js` `SAMPLES` gains `cable` (GEOPHONE CABLE, rare, value 4,
+- [x] Long Shadow `ending` = THE COUNT card (tag/name/brief per §3.6).
+- [x] `lore.js` `SAMPLES` gains `cable` (GEOPHONE CABLE, rare, value 4,
       `unlock: 'ls-posta'`) and `core` (MEMORY CORE, rare, value 8,
       `unlock: 'ls-hub'`); every pre-existing `SAMPLES` entry is
       byte-identical (`git diff` shows additions only).
-- [ ] Anaximenes `MISSIONS`/`CODEX`/`ENDING_CARD` in `lore.js` byte-identical.
-- [ ] Full manual playthrough (fresh profile, Long Shadow): L01 → L02 (postA:
+- [x] Anaximenes `MISSIONS`/`CODEX`/`ENDING_CARD` in `lore.js` byte-identical.
+- [x] Full manual playthrough (fresh profile, Long Shadow): L01 → L02 (postA:
       reach, hold-E record, cable sample) → L03 (postB: reach, record, 3
       samples) → L04 (hub: reach, master record, core deep-extract) → L05
       (breach, transmit at sled with core in bay) → ending card `THE COUNT` →
       free survey. All 6 codex entries unlocked by the end (in-page check on
       the game's codex set). `farside.longshadow.v1` ends with
       `missionId: null`.
-- [ ] L04 gating behaves per the drumhead pattern: the hub content prompt stays
+- [x] L04 gating behaves per the drumhead pattern: the hub content prompt stays
       visible until the record AND the extract are both done; after the last
       one, the content closes and the core is gone from the field.
-- [ ] Anaximenes campaign unchanged: gate green (21/21).
-- [ ] `node --check` green.
+- [x] Anaximenes campaign unchanged: gate green (21/21).
+- [x] `node --check` green.
 
 ## Context the worker needs (and ONLY this)
 

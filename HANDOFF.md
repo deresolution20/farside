@@ -1,48 +1,39 @@
 # HANDOFF — farside (browser rebase)
 
-_Last session: 2026-08-31. This file supersedes memory from prior sessions._
+_Last session: 2026-09-02. This file supersedes memory from prior sessions._
 
 ## Where we are
 
-**The app is now FARSIDE — The Knocking at Anaximenes.** On 2026-08-30 the project was
-re-identified in one pass: REGOLITH / Anaxagoras / Beacon-9 / MU-7 CASSIOPEIA / Directorate
-is gone from code, docs and specs. The new identity, in lockstep everywhere:
+**Phase 2 — regions / levels — is CLOSED (2026-09-02, gate 28/28, exit 0).** The game
+is **FARSIDE — The Knocking at Anaximenes**, now with **two selectable basins** on the
+menu:
 
-- Title **FARSIDE**, subtitle **The Knocking at Anaximenes**; basin **Anaximenes**
-  (72.49° N, 44.98° W — the northwest rim; "farside" is the name, not a claim about the far
-  side of the Moon).
-- Station **VANTAGE-3** (deep-seismic observatory), rover **K-9 "KESTREL"**, bureau
-  **Meridian Authority** / NW-LIMB SURVEY DIVISION.
-- Story: the basin floor **knocks** — pulses from hollow glass pipes under the central
-  massif. Silent for 214 sun-days; it began again the day the sled landed. Codex ids:
-  `dossier, geology, first-return, voids, roster, log-early, log-late, memo, function,
-  lasthour, drum, transmission`. Sample types: `soil, breccia, ilmenite, agglutinate,
-  pyroclast, meteoritic, pipe, lining, drum` (the old `tube`/`film`/`node` specials are
-  `pipe`/`lining`/`drum`).
-- Machine identity: `window.FARSIDE`, save key `farside.anaximenes.v3`, package `farside`,
-  screenshot prefix `farside-`, console tag `[FARSIDE]`.
-- The project MIT licence was dropped (LICENSE deleted, README licence section trimmed to
-  the three.js attribution); `vendor/three/` keeps its own MIT header.
+- **ANAXIMENES** — the original campaign (5 missions → ending **COUNTING** + free
+  survey), worldgen provably byte-identical to pre-Phase-2 (`tools/bake-diff.cjs`),
+  save slot `farside.anaximenes.v3` (never bumped).
+- **THE LONG SHADOW** — a high-rim, shadowed basin entered through a wall breach:
+  5-mission campaign (THE LONG SHADOW → ECHO → THE QUIET ONE → SILENCE → THE COUNT),
+  6 codex entries, cable/core samples, ending card **THE COUNT** (two basins, one
+  count — it began the day the sled landed). Save slot `farside.longshadow.v1`.
+  Verified end-to-end twice: a 36/36 driver run (task 6) and the gate's L01 + save
+  round-trip checks.
 
-**Phase 1 — data-driven missions — is CLOSED.** The campaign is a pure data problem: adding,
-reordering, or retuning a mission is an edit to `src/game/lore.js` only. Objective completion
-runs through a small typed engine in `gameplay.js`; positional `missionIdx` gates are gone.
-Saves carry stable identities.
+The world is **data**: `bakeTerrain(report, P)` takes a per-region parameter bundle
+and `REGIONS` in `src/game/regions.js` is a pure-data array of region records. Adding
+a third world is "bundle + mission data + (if needed) one or two prop builders" —
+no engine changes. Region switching is menu-only (two cards with save-derived status
+lines, its own `#regionload` sheet); the save is the exit; the selection persists in
+the global `farside.set` settings slot.
 
-The verification gate plays the **full 5-mission campaign** end-to-end (21 checks, exit 0)
-from a clean browser profile in ~28 minutes. Evidence is regenerated into `spec/evidence/`
-after every gate run (the pre-re-identity PNGs were deleted with the old identity).
-
-On 2026-08-31 the `docs/` screenshots were recaptured clean (hero / drill / hud had
-compositor ghosting) and the README was brought current: stats (6,839 JS lines; ~390 KB
-gzipped / 1.69 MB raw; 5 missions · 12 codex · 9 samples), alt-text, and `content.js` added
-to the layout table. The doc-shot capture gotchas that made the clean shots possible are below.
-
-Next: **Phase 2 — regions / levels** (deep-plan it in a fresh session:
-`spec/phases/phase-2-*.md`). The target is parameterising `bakeTerrain()` (extent, crater
-fields, props density, spawn, landmarks) so the menu can offer 2+ named regions, each with its
-own mission set and save slot. `docs/ARCHITECTURE.md` §Terrain and §Content explain the
-contracts to respect. Read the Product Spec §7 phase map and `spec/IDEAS.md` first.
+The verification gate plays the **full Anaximenes 5-mission campaign** end-to-end
+(deploy/drive/scan → 3 excavations → 3 relays → station + lining → massif + drumhead
+extract + transmit → ending → save → reload → free-survey resume), **then** the
+Phase 2 section: both menu cards + statuses → select Long Shadow (swap, rim-crest
+sanity) → LS L01 playable (T, ~140 m drive, G) → `farside.longshadow.v1` written on
+`ls-echo` → reload → RESUME into LS L02 → switch back to Anaximenes (its round-trip
+save intact, `station.x === -236`) → LS bake determinism (two in-page bakes, 1000
+strict samples). **28 checks, exit 0, clean profile, ~30 min runtime** (the 21
+campaign checks are ~26.5 min of that — budget sessions accordingly).
 
 ## Exact commands (verified this session)
 
@@ -51,126 +42,147 @@ contracts to respect. Read the Product Spec §7 phase map and `spec/IDEAS.md` fi
 for f in $(find src vendor server.js -name '*.js'); do node --check "$f" || exit 1; done
 node --check tools/gate.cjs
 
-# 2. serve (port 5173 is taken by an UNRELATED user node process — never kill it)
+# 2. worldgen identity guard — ALWAYS after touching bake.js/regions.js terrain data:
+#    frozen pre-Phase-2 copy vs new bake(T_P_ANAXIMENES), strict float equality + determinism
+node tools/bake-diff.cjs
+
+# 3. serve (port 5173 is taken by an UNRELATED user node process — never kill it)
 node server.js 8080 --shots &          # --shots: POST /__shot?n=name writes .shots/name.png
 
-# 3. gate (needs headful Firefox on the X11 display — Mesa WebGL2)
+# 4. gate (needs headful Firefox on the X11 display — Mesa WebGL2)
 #    For a CLEAN run (no leftover localStorage): kill the test Firefox, wipe + re-create
 #    the profile dir, then relaunch. The profile dir MUST exist or Firefox starts but hangs
 #    without opening marionette.
 rm -rf /tmp/opencode/ffprof && mkdir -p /tmp/opencode/ffprof
 DISPLAY=:1 firefox -no-remote -marionette -profile /tmp/opencode/ffprof -width 1280 -height 800 &
-node tools/gate.cjs 2828 .shots         # exit 0 = GATE PASS (21/21)
+node tools/gate.cjs 2828 .shots         # exit 0 = GATE PASS (28/28)
 ```
 
-Test browser runs on profile `/tmp/opencode/ffprof`, marionette port **2828**, display `:1`.
-The user's own Firefox and the node process on **5173** are never killed.
+Test browser: profile `/tmp/opencode/ffprof`, marionette port **2828**, display `:1`.
+The user's own Firefox and the node process on **5173** are never killed. Background
+launches that must outlive the shell: `nohup setsid … </dev/null & disown`.
 
-Gate scenario (all 21): menu → BEGIN DESCENT → m01 FIRST PASSAGE (T deploy, real W/A/D drive,
-G scan) → m02 THE LISTENING FLOOR (3 drills incl. a pipe, offload) → m03 OPEN CHANNEL (3
-relays on high ground) → m04 THE QUIET STATION (reach VANTAGE-3, hold-E, lining drill) →
-m05 THE KNOCK (massif, drumhead settle-search extract, transmit at the sled) → ending card
-(COUNTING) → save v3 → reload → RESUME SURVEY → free survey with 12 codex + drumhead kept.
+## Architecture as-built (the parts Phase 2 added/changed)
 
-## Architecture as-built
-
-- Plain ES modules, **vendored three.js r160** (`vendor/three/`), zero npm deps, zero build
-  step, zero runtime assets. `index.html` + `src/main.js` are the entry. Frame order and the
-  other load-bearing invariants are in `docs/ARCHITECTURE.md` — read the section for whatever
-  you touch.
-- **Mission identity:** `Game.missionId: string | null` (`null` = free survey). Current ids:
-  `firstpassage, listening, channel, quiet, knock`; `get mission()` looks the id up in
-  `MISSIONS`. `reset(freeRoam)` sets `missionId = MISSIONS[0].id` then, if `freeRoam`, nulls
-  it and unlocks all codex. `advance()` finds the next mission *by id* in the data array
-  (never positionally) and shows its card, or `ENDING_CARD` + `freeRoam` when exhausted.
-- **Objective engine (`gameplay.js`):** `emit(event, payload)` is the single funnel — every
-  action site calls it (`array-deployed`, `scan-done`, `sample`, `extract`, `relay`,
-  `offload`, `transmit`, `station-interact`); it matches the current mission's unmet
-  objectives (`event`/`count` with `special` filter) and completes them. `checkState()` runs
-  each frame and evaluates `distance` records against `LANDMARKS` (`ref`/`op`/`v`, optional
-  `minH`). Non-objective side effects (codex unlocks, `drumTaken`, logs) stay at the action
-  sites. `MISSIONS` in `lore.js` is the only place objective text/counts/thresholds live.
-- **Content gates → data:** the drumhead anomaly is stamped `unlocks:'drum'`; `anomalyOpen(a)`
-  is true iff the tag is unset **or** an *unmet* objective of the current mission declares it
-  (the `!objDone[own]` form deadlocks). The station hold-E prompt is the `CONTENT` record +
-  `tagOpen('station')`. Compass + minimap POIs come from `game.objectiveTargets()`.
-- **Save v3:** localStorage key `farside.anaximenes.v3`. Blob carries `missionId`
-  (string|null) and `anoms` as `[id, 0|1|2]` pairs (non-default states only); `a.id` is
-  `round(x*10)+','+round(z*10)` (deterministic from the fixed worldgen). `load()` re-keys by
-  id and ignores unknown ids. Bump the `KEY` in the same commit as any
-  anomaly-generation/terrain change (constitution).
-- Debug handle: `window.FARSIDE` = App (`state` 0 BOOT / 1 MENU / 2 PLAY / 3 PAUSE / 4 CODEX /
-  5 HELP / 6 CARD; `game`, `input`, `tick(dt)`).
+- **Region bundle (`src/game/regions.js`)** — the ONLY module that knows both basins:
+  `export const REGIONS = [ANAXIMENES, LONGSHADOW]`, each a pure-data record:
+  `{ id, name, subtitle, tagline, brief, saveKey, sunAz0, spawn, terrain: P, playableR,
+  landmarks, content, props, anoms, transmit, missions, codex, ending }`.
+  `P_ANAXIMENES` lives in `src/world/bake.js` (original basin verbatim);
+  `P_LONGSHADOW` lives in `regions.js`. Anaximenes's mission/codex/ending constants
+  stay in `lore.js`; its bundle wraps them. `props.posts`/`props.hub` (Long Shadow
+  listening array) are absent-or-null in Anaximenes.
+- **Bake (`src/world/bake.js`)** — pure math, no render import: `baseHeight(x, z, P)`,
+  `bakeTerrain(report, P)` (generator → `{macro, far, det}`, same shapes as before),
+  `buildMips(base, res)`. The fixed 520/596 m crossfade and 95 m detail fade stay
+  hardcoded in the terrain GLSL (extent-tied). `terrain.js` imports it;
+  `terrain.heightAt`/`slopeAt` are CPU mirrors of the shader.
+- **Identity guard (`tools/bake-diff.cjs`)** — a **frozen copy of the pre-Phase-2 bake
+  math (DO NOT EDIT — it is the reference)** vs `bakeTerrain(P_ANAXIMENES)`: strict
+  float equality on macro/far/det + two-bake determinism. Any worldgen change that
+  fails it either reverts or requires an Anaximenes save-key bump (constitution).
+- **Saves (`src/core/save.js`)** — per-region slots: `Save.read(r) / write(r, data) /
+  clear(r)` keyed by `r.saveKey` → `farside.anaximenes.v3` / `farside.longshadow.v1`.
+  Settings are global: `settings()`/`saveSettings()` on key **`farside.set`** (one-time
+  migration read from the legacy v3 slot); `settings.region` (the selected region id)
+  rides there, so a reload returns to the same basin. Save blobs are identity-based
+  (`missionId: string|null`, `anoms` as `[id,0|1|2]` pairs; `id = round(x*10)+','+
+  round(z*10)`).
+- **Region-aware `Game` (`src/game/gameplay.js`)** — `Game.reset(freeRoam, region)`
+  binds `this.region`; codex/unlocks reference region data. Task-3 renames:
+  `stationVisited` → `contentVisited` (keyed map, per-region content records),
+  `drumTaken` → `payloadTaken` (+ per-anomaly `deep` flag for the drumhead-core
+  pattern — an anomaly that only opens when an *unmet* objective of the current
+  mission declares its `unlocks` tag). `o.unlock` completes objectives and unlocks
+  codex; `emit('sample' | 'station-interact', …)` now carries payloads (`a.special` /
+  `c.key`). `save()` writes the region slot AND returns the blob. `advance()` (task 6)
+  resets `objDone`/`counts` per mission — objective ids may repeat across a region's
+  missions (Long Shadow reuses `reach`/`recover` in L02/L03; Anaximenes ids never
+  collide, which is why this was invisible until Phase 2).
+- **World swap (`src/main.js`)** — `buildWorld(region, baked)` extracted;
+  `selectRegion(r)` (menu-only): persist selection → `#regionload` sheet (its own
+  bar; never `#boot`) → bake → **teardown in exact reverse:** `game.reset(false)`,
+  remove `terrain.group` (clipmap reuses the group — old rings must go explicitly),
+  `props.group`, dust points, rover root → rebuild everything → reassign
+  `App.{terrain, props, dust, rover, rig, game, region}` → `App.sunAz = r.sunAz0` →
+  menu. Untouched globals: `Engine`, `Sky`, `Audio`, `Input`, settings, `tex` (one
+  world in memory at a time). Boot picks `settings.region || REGIONS[0]`.
+- **Menu picker** — `#regionCards` with `#region-anaximenes` / `#region-longshadow`
+  buttons; status line per card derived from that region's save (NO SURVEY / IN
+  PROGRESS — <tag> / COMPLETE — FREE SURVEY). `Props` gained `buildPost`/`buildHub`
+  (colliders + idle animation).
+- Debug handle: `window.FARSIDE = App` (`state` 0 BOOT / 1 MENU / 2 PLAY / 3 PAUSE /
+  4 CODEX / 5 HELP / 6 CARD; `game`, `region`, `input`, `tick(dt)`).
 
 ## Hard-won gotchas
 
-1. **Marionette here is NOT WebSocket.** Raw-TCP length-prefixed JSON (`N:<json>`); a WS
-   handshake gets no 101. After the capabilities message send `[0, id, "WebDriver:Name",
-   params]`; responses `[1, id, error, {value}]`. `WebDriver:NewSession` needs no prompt when
-   Firefox started with `-marionette`. A malformed packet kills the listener — restart Firefox
-   if the port goes dead. Reference client: `tools/gate.cjs`.
-2. **`WebDriver:ExecuteScript` takes a function BODY** (`return x;`), not an IIFE — an IIFE's
-   return is silently discarded. To use `await`/`import`, `return (async () => { … })();`.
-3. **Marionette's `ExecuteScript` runs in a SEPARATE JS module map.** A dynamic
-   `import('/src/game/lore.js')` from a script there loads a *duplicate* module — mutating it
-   never affects the game. To change the page's live ES modules (e.g. the insertion test),
-   inject a `<script type="module">` into the DOM; that runs in the page's main realm and
-   shares the game's module graph.
-4. **The mission card blocks the world.** Fresh start: card appears ~700 ms in, `App.state` → 6
-   (CARD), the world freezes. Click `#cardGo` to return to PLAY. On *mission advance* the card
-   shows but state stays PLAY (world runs behind it). On *resume* there is no card.
-5. **Synthetic input works**: window-level `keydown`/`keyup` with `code` set; edge actions
-   (T/G/R/B) read `input.hit`, throttle/steer read `input.down`; `input.endFrame()` clears edges
-   every frame.
-6. **Steering:** real W/A/D — KeyD lowers heading, KeyA raises it (the gate's `driveTo` was
-   fixed for this). If the loop can't close on a target within budget it re-seats the rover
-   within 8 m (driver assist, logged in the result detail).
-7. **Settle-search drills** (`extractDrum`, `drillFacing`): the drill only fires within 2.6 m
-   (`nearestAnom`) and the arm yaw is clamped ±0.95 rad off the chassis heading. Re-seat on a
-   small ring with the nose pointed at the target so the arm swings ~0 and the bit lands in
-   radius — then extend + LMB and poll the anomaly's `taken` flag. A blind core (bit out of
-   radius) still grows the bay, so verify `taken`, not `bay.length` (this is what silently
-   passed the lining step before).
-8. **Profile dir must exist** before launching the test Firefox, or it starts but hangs without
-   opening marionette (Mesa WebGL2 first-run init). `mkdir -p` it.
-9. Port 5173 is held by an unrelated user node process; the user's own Firefox may also be
-   running — never kill either.
-10. **Identity sweep:** the old names (`REGOLITH`, `Anaxagoras`, `Beacon-9`, `MU-7`,
-    `CASSIOPEIA`, `winchxyz`) must stay out of the repo — `vendor/` excepted. Lowercase
-    "regolith" survives as the geological common noun (physics, audio, dust); the product
-    name is FARSIDE.
-11. **Doc-shot ghosting is session-intermittent, not flow-deterministic.** A "double-image"
-    in a panel crop can come back clean when the *same* T→drive→stop prefix is re-run in a
-    fresh session — do not chase it by editing the flow. Two real causes: (a) the mission
-    panel's drive-objective counter text changes **every frame while driving**, so a shot
-    taken mid-drive ghosts that objective line; (b) compositor/surface residue from a prior
-    frame. Countermeasures that produced the clean set: warm up with a resize
-    (1024×640→1280×800) to clear residue; shoot on a **stable** panel (at rest, no per-frame
-    text churn, no mid-session panel swap); take several shots in the window and pick; and
-    **verify crops at 4× zoom** — a ghosted panel reads clean at 1×. For the hero add a
-    **hull check + retry** (a boulder strike drops integrity to ~96% and prints a red IMPACT
-    line — re-run until hull 100). For the HUD shot use the **MAST camera** (clean
-    composition, no rover, stable panel at ~38 s).
-12. **Kill only the test Firefox, never the user's.** `pkill -f "[p]rofile /tmp/opencode/ffprof"`
-    — the leading bracket stops the pattern from matching pkill's own command line. The user's
-    Firefox and the node process on 5173 must survive.
+1. **`bake-diff.cjs` contains a FROZEN copy of the old bake math — never edit it.**
+   It is the byte-identity reference; the only correct fix for a mismatch is changing
+   the *new* code to agree, or (if Anaximenes's own P must move) bumping the
+   Anaximenes save key in the same commit (constitution) and accepting it.
+2. **The rebuild list + uniform-wrapper rule.** On any world swap (or re-bake) remove
+   AND rebuild exactly: `Terrain` group, `Props` group, `Dust`, `Rover`, `CameraRig`,
+   `Game`, `hud.bakeMap(terrain)`. **Dust must be rebuilt, not re-pointed**: it wraps
+   `terrain.uniforms.uSunDir` at construction, and **you never replace a uniform
+   wrapper object — only mutate `.value`** (`ARCHITECTURE.md` §Terrain: every clipmap
+   ring and Dust share the same wrapper objects by reference).
+3. **Save-blob renames are load-migrated, keys NOT bumped.** `stationVisited`/
+   `drumTaken` → `contentVisited`/`payloadTaken` with one-time load migration, because
+   Anaximenes worldgen + anomaly ids are unchanged (bake-diff proves it). Bump a
+   region's key only when *that region's* anomaly generation/terrain changes.
+4. **Objective bookkeeping is per-mission.** `advance()` resets `objDone`/`counts`;
+   stale maps pre-complete objectives whose ids repeat across missions (found live:
+   L02/L03 `reach`/`recover` collision). Driver-side corollary: the 1.4 s advance
+   timer wipes the map, so gate checks capture bookkeeping at the mutation instant
+   (immediately after the G tap / before the transition), not after.
+5. **Marionette here is NOT WebSocket.** Raw-TCP length-prefixed JSON (`N:<json>`,
+   length = BYTES); a WS handshake gets no 101. Send `[0, id, "WebDriver:Name",
+   params]`; responses `[1, id, error, {value}]`. `ExecuteScript` takes a function
+   BODY (for `import`/`await`: `return (async () => { … })();`) and runs in a
+   **separate module map** — `import()` from there loads duplicate modules (fine for
+   pure-math checks like G28; to *mutate* page modules inject a
+   `<script type="module">`). Reference client: `tools/gate.cjs`.
+6. **Synthetic input & steering** (gate helpers are the reference): window-level
+   `keydown/keyup` with `code`; KeyD lowers heading, KeyA raises it; `driveTo`
+   re-seats ≤8 m if it can't close (the one allowed assist); drills need a
+   settle-search re-seat on a ~2 m ring with the nose ON the target (arm yaw ±0.95
+   rad; drill radius 2.6 m) — verify the anomaly's `taken`, not `bay.length` (a blind
+   core still grows the bay).
+7. **The mission card blocks the world** on a fresh start (~700 ms in, `state` → 6;
+   click `#cardGo`); on *advance* the card shows while state stays PLAY (world runs
+   behind it); on *resume* there is no card.
+8. **Ops:** profile dir must exist before launching the test Firefox (or it hangs
+   without marionette); kill only the test one —
+   `pkill -f "[o]pencode/ffprof"` (bracket stops self-match); background launches =
+   `nohup setsid … </dev/null & disown`; the user's Firefox and the 5173 node process
+   always survive.
+9. **Identity sweep stays closed:** `REGOLITH`, `Anaxagoras`, `Beacon-9`, `MU-7`,
+   `CASSIOPEIA`, `winchxyz` must not reappear (vendor/ excepted); lowercase "regolith"
+   is the common noun and is fine.
+10. **Gate runtime is ~30 min for 28 checks now** (campaign section dominates).
+   Don't re-run it reflexively after doc-only changes.
 
-## Next steps (Phase 2 kickoff, fresh session)
+## Next steps (Phase 3 — planets & content, fresh session)
 
-1. Read `spec/constitution.md`, `spec/product-spec.md` (§7 phase map + §8 risks), this file,
-   and `docs/ARCHITECTURE.md` §Terrain + §Content.
-2. Deep-plan: `spec/templates/phase-spec.md` → `spec/phases/phase-2-regions-levels.md`.
-   Design the `bakeTerrain()` parameter bundle (extent, crater fields, props density, spawn,
-   landmarks), per-region mission sets, and per-region save slots (extend the `KEY`/identity
-   scheme from Phase 1).
-3. Tag tasks (`easy | hard | gate`); keep file allowlists tight. Phase 2 touches
-   `terrain.js` (the CPU/GPU heightfield contract) and `content.js` — re-run the gate after
-   every task.
-4. Gate after every task; evidence to `spec/evidence/phase-2/`.
+1. Read `spec/constitution.md`, `spec/product-spec.md` (§7 phase map + §8 risks),
+   this file, and `docs/ARCHITECTURE.md` (§Terrain, §Content, §World).
+2. Deep-plan: `spec/templates/phase-spec.md` → `spec/phases/phase-3-<name>.md`.
+   **A planet is a data bundle, not a new engine** (Product Spec §4): extend the
+   region record toward gravity/sun-altitude-cycle/sky-palette/albedo parameters,
+   deliver **2+ additional worlds** beyond Anaximenes & Long Shadow with their own
+   campaigns, and expand per-world content (new sample kinds, new prop builders).
+   Anything that starts looking like a new code path goes to `spec/IDEAS.md`.
+3. Seeded ideas + parked items: `spec/IDEAS.md` (parking-lot format: scheduled items
+   move into the phase spec; out-of-scope items stay until a phase claims them).
+4. Keep file allowlists tight; `node --check` + `bake-diff` after every worldgen
+   touch; the full gate (28 checks) after every task.
 
 ## Open risks
 
-- **Terrain parameterisation** must not break the CPU/GPU heightfield contract or the 95 m
-  camera-fade window — read `docs/ARCHITECTURE.md` §Terrain before touching `bakeTerrain()`.
-- The gate is **headful-only** (Mesa WebGL2 on :1); no CI story. Accepted for now.
-- `gameplay.js` remains the one file everything touches; keep refactor slices small and gated.
+- The gate is **headful-only** (Mesa WebGL2 on `:1`); no CI story. Accepted for now.
+- `gameplay.js` remains the one file everything touches; keep refactor slices small
+  and gated.
+- Per-region worldgen changes multiply the save-key surface: remember the
+  identity-based key discipline is now per-region (bake-diff covers Anaximenes only —
+  a new region's determinism rides on its own gate checks, as G28 does for Long
+  Shadow).

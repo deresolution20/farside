@@ -25,18 +25,18 @@ Shadow L01 becomes playable end-to-end.
 
 ## Acceptance criteria (contract — MUST be testable)
 
-- [ ] `buildWorld(region, baked)` builds the full world in the existing order
+- [x] `buildWorld(region, baked)` builds the full world in the existing order
       (terrain → albedo → `new Props(scene, terrain, quality, region)` →
       `props.buildHome()` → `buildStation` only when `region.props.station !==
       'none'` → pylons/pipes/bigPipe from `region.props` → dust → rover → rig →
       `hud.bakeMap(terrain)` → `new Game({…, region})` with `game.tc =
       App.settings.tc`). Boot calls it; the Anaximenes boot sequence is
       unchanged (gate proves it).
-- [ ] `Props` constructor `(scene, terrain, quality, region)`; `buildBoulders()`
+- [x] `Props` constructor `(scene, terrain, quality, region)`; `buildBoulders()`
       uses `region.playableR` + `region.landmarks.home`; `buildHome()` places at
       `region.landmarks.home`. Anaximenes gets identical values → identical
       boulder field.
-- [ ] `selectRegion(r)`: no-op when `r === App.region`; persists
+- [x] `selectRegion(r)`: no-op when `r === App.region`; persists
       `settings.region`; hides menu; shows `#regionload` (own bar/text; **not**
       `#boot`); runs `bakeTerrain(progress, r.terrain)`; then removes/rebuilds
       exactly: `terrain` (`scene.remove(terrain.group)` first), `props.group`,
@@ -44,7 +44,7 @@ Shadow L01 becomes playable end-to-end.
       sets `App.sunAz = r.sunAz0`; reassigns `App.{terrain,props,dust,rover,rig,
       game,region}`; `showMenu()` with re-derived card statuses. Globals
       (Engine/Sky/Audio/Input/settings/tex) untouched.
-- [ ] `#regionCards`: two cards (`id="region-anaximenes"`,
+- [x] `#regionCards`: two cards (`id="region-anaximenes"`,
       `id="region-longshadow"`), name + subtitle + status line from
       `Save.read(region)`: no save → `NO SURVEY — READY FOR DESCENT`; save with
       `missionId != null` → `SURVEY IN PROGRESS — <mission.tag>`; save with
@@ -52,20 +52,20 @@ Shadow L01 becomes playable end-to-end.
       selected card; buttons act on the selection; `menuBrief` shows the
       selected region's `brief`; default selection `settings.region ||
       'anaximenes'`.
-- [ ] CSS: new `.region-card`/`.region-card.sel`/`#regionCards` rules in the
+- [x] CSS: new `.region-card`/`.region-card.sel`/`#regionCards` rules in the
       menu section of `src/ui/styles.css`; no `.panel` name at overlay scope;
       no `var(--s)` in `#regionload` (px only).
-- [ ] In-page (manual, fresh profile): select THE LONG SHADOW → loading sheet →
+- [x] In-page (manual, fresh profile): select THE LONG SHADOW → loading sheet →
       menu; `FARSIDE.region.id === 'longshadow'`; `terrain.heightAt(0,0)` differs
       from the Anaximenes value; select ANAXIMENES again → back; repeat once
       more (A→B→A) without console errors or doubled terrain (screenshot).
-- [ ] Long Shadow L01 playable: select it → BEGIN DESCENT → mission card
+- [x] Long Shadow L01 playable: select it → BEGIN DESCENT → mission card
       (MISSION 01) → deploy (T) → drive 120 m (W) → scan (G) → mission complete
       → `farside.longshadow.v1` written with `missionId: 'ls-echo'`; Anaximenes
       slot untouched.
-- [ ] Gate green (21/21) — the default-selection Anaximenes flow is unaffected
+- [x] Gate green (21/21) — the default-selection Anaximenes flow is unaffected
       by the new menu DOM.
-- [ ] `node --check` green on all touched files.
+- [x] `node --check` green on all touched files.
 
 ## Context the worker needs (and ONLY this)
 
@@ -82,11 +82,11 @@ Shadow L01 becomes playable end-to-end.
 
 ## Verification gate (run before merge)
 
-- [ ] Acceptance criteria all met
-- [ ] Gate green (21/21)
-- [ ] A→B→A swap verified in-page with screenshots
-- [ ] `node --check` green
-- [ ] Spec still matches code (no drift)
+- [x] Acceptance criteria all met
+- [x] Gate green (21/21)
+- [x] A→B→A swap verified in-page with screenshots
+- [x] `node --check` green
+- [x] Spec still matches code (no drift)
 
 ---
 _Result / notes (2026-09-01):_
