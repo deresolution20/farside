@@ -347,7 +347,11 @@ export class Sky {
 
     // Galilean moons: one Points cloud, each dot sized by its angular size at
     // the same 7400 m billboard distance as the planet, wobbled by the same
-    // libration wobble the Earth carries.
+    // libration wobble the Earth carries. update() writes `camera +
+    // bearing·7400` for the planet AND the moons in every frame (the Sky
+    // constructor has no camera, so the initial attributes below are that
+    // same frame at camera = 0; the first update() — which always precedes
+    // the first render — replaces them, as it does for the Earth mesh).
     const list = j.companions || [];
     if (list.length) {
       const pos = new Float32Array(list.length * 3);
@@ -494,11 +498,17 @@ export class Sky {
         this.compMat.uniforms.uScale.value = this.renderer.domElement.height * 0.5;
         for (let i = 0; i < this.companions.length; i++) {
           const c = this.companions[i];
-          // each moon keeps its bearing with the same libration wobble as Earth
+          // each moon keeps its bearing with the same libration wobble as Earth;
+          // the camera term matches the planet mesh exactly, so the moons stay
+          // frame-locked to it (both live in the camera-tracking group)
           const faz = c.az0 + Math.sin(lib + i * 2.39) * 0.055;
           const falt = c.alt0 + Math.cos(lib * 0.83 + i * 2.39) * 0.030;
           const fa = Math.cos(falt);
-          this.companionPositions.setXYZ(i, fa * Math.cos(faz) * 7400, Math.sin(falt) * 7400, fa * Math.sin(faz) * 7400);
+          const cp = _v.copy(camera.position);
+          cp.x += fa * Math.cos(faz) * 7400;
+          cp.y += Math.sin(falt) * 7400;
+          cp.z += fa * Math.sin(faz) * 7400;
+          this.companionPositions.setXYZ(i, cp.x, cp.y, cp.z);
         }
         this.companionPositions.needsUpdate = true;
       }

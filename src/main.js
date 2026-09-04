@@ -196,10 +196,15 @@ function buildWorld(region, baked, tex) {
 
   // First among the world-owned objects, so the swap teardown is reverse
   // build order. A region's `sky` bundle drives it; the Moon default is SKY_MOON.
-  const sky = new Sky(e.renderer, e.scene, tex, e.quality, region.sky ?? SKY_MOON);
+  const skyCfg = region.sky ?? SKY_MOON;
+  const sky = new Sky(e.renderer, e.scene, tex, e.quality, skyCfg);
 
   const terrain = new Terrain(e.renderer, baked, e.quality, e.caps);
   terrain.uniforms.uAlbedoTex.value = tex.moonAlbedo;
+  // The terrain's home-planet earthshine adopts the world's sky-bounce palette.
+  // Only Jovian regions carry a `ground` array in their sky cfg; the Moon's
+  // SKY_MOON has none, so its uEarthCol stays at the default (0.055,0.075,0.115).
+  if (skyCfg.ground) terrain.uniforms.uEarthCol.value.set(skyCfg.ground[0], skyCfg.ground[1], skyCfg.ground[2]);
   e.scene.add(terrain.group);
 
   const props = new Props(e.scene, terrain, e.quality, region);
@@ -903,7 +908,7 @@ function sunAltitude(az, S = SUN_MOON) {
 function syncSun() {
   const { sky, terrain, engine } = App;
   terrain.uniforms.uSunDir.value.copy(sky.sunDir);
-  terrain.uniforms.uEarthDir.value.copy(sky.earthDir);
+  terrain.uniforms.uEarthDir.value.copy(sky.jove ? sky.joveDir : sky.earthDir);
   const lo = clamp(sstep(-0.02, 0.10, sky.sunDir.y), 0, 1);
   terrain.uniforms.uSunCol.value.set(2.62 * lo, 2.46 * lo, 2.22 * lo);
   engine.sun.position.copy(sky.sunDir).multiplyScalar(100);

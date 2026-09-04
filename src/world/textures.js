@@ -123,9 +123,13 @@ export function makeJoveTextures(W = 1024, H = 512) {
     for (let i = 0; i < W; i++) {
       const lon = (i / W) * Math.PI * 2;
       const o = (j * W + i) * 4;
-      // latitude bands; the fbm term wobbles every boundary in longitude
-      const wob = fbm(lon * 2.0 + 5.0, lat * 6.0, 4, 2.1, 0.5, 707) - 0.5;
-      const turb = fbm(lon * 9.0 + 2.0, lat * 24.0 - 1.0, 3, 2.15, 0.5, 991) - 0.5;
+      // latitude bands; the fbm terms are sampled on the 3-D unit direction
+      // (axis pairs, as landAt does) rather than in (lon, lat), so the noise
+      // wraps seamlessly at the equirectangular seam
+      const cl = Math.cos(lat);
+      const x = cl * Math.cos(lon), y = Math.sin(lat), z = cl * Math.sin(lon);
+      const wob = fbm(x * 2.0 + 5.0, z * 2.0 - 2.0, 4, 2.1, 0.5, 707) - 0.5;
+      const turb = fbm(x * 3.0 + 2.0, y * 12.0 - 1.0, 3, 2.15, 0.5, 991) - 0.5;
       const band = 0.5 + 0.5 * Math.sin(lat * 13.0 + wob * 5.0);
       let r = lerp(186, 236, band) + turb * 26;
       let gg = lerp(146, 224, band) + turb * 24;
