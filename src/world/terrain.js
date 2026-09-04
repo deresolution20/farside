@@ -301,6 +301,7 @@ export class Terrain {
       uTrail: { value: this.trailRT.texture },
       uSunMask: { value: this.sunRT.texture },
       uAlbedoTex: { value: null },
+      uBaseCol: { value: new THREE.Vector3(0.148, 0.129, 0.104) },
       uConst: { value: new THREE.Vector4(MACRO_EXT, FAR_EXT, DET_TILE, DENT_EXT) },
       uConst2: { value: new THREE.Vector4(DET_AMP, DET_AMP2, DET_SCALE2, this.TRAIL_EXT) },
       uCamXZ: { value: new THREE.Vector3() },
@@ -356,6 +357,7 @@ export class Terrain {
       uniform sampler2D uRShadow; uniform mat4 uRShadowMat;
       uniform float uRShadowOn, uRShadowTexel;
       uniform vec3 uSunDir, uSunCol, uAmbient, uEarthDir, uEarthCol;
+      uniform vec3 uBaseCol;
       uniform vec3 uLamp, uLampDir, uScanC;
       uniform float uSunMaskExt, uLampPow, uScanR, uTime, uMarks, uFogK;
       uniform vec4 uConst2;
@@ -391,7 +393,7 @@ export class Terrain {
         float mott = mix(0.72, 1.24, dot(macroAlb, vec3(0.33)));
         float varN = fb(vW.xz*0.34);
         float speck = n2(vW.xz*11.9);
-        vec3 base = vec3(0.148, 0.129, 0.104);
+        vec3 base = uBaseCol;
         vec3 albedo = base * mott * (0.87 + 0.17*varN + 0.11*g0) * (0.90 + 0.22*speck);
         // freshly excavated material is brighter — unweathered, unsputtered
         albedo *= 1.0 + 0.62 * smoothstep(0.02, 0.55, vDent);

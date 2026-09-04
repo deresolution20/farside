@@ -159,24 +159,41 @@ export function makeJoveTextures(W = 1024, H = 512) {
   return { jove: toTexture(c, true) };
 }
 
-/* ---------------- lunar albedo: mare / highland mottling ---------------- */
-export function makeMoonAlbedo(N = 512) {
+/* ---------------- ground albedo: mare / highland mottling ----------------
+   A per-body ground palette. `A_MOON` carries the historical lunar seeds,
+   levels and tone; plugged into makeBodyAlbedo it reproduces the old
+   makeMoonAlbedo pixel-for-pixel — the flash branch contributes nothing when
+   `A.flash` is null, and the tone multiplies are the old inline 1 / 0.98 /
+   0.94. Same evaluation order as before, so the Moon world is byte-identical. */
+export const A_MOON = { seedMare: 5, seedFine: 61, high: 190, low: 96,
+                        fineLo: 0.86, fineHi: 0.28, tone: [1, 0.98, 0.94], flash: null };
+
+export function makeBodyAlbedo(N = 512, A = A_MOON) {
   const c = canvas(N, N);
   const g = c.getContext('2d');
   const img = g.createImageData(N, N);
+  const tone = A.tone;
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
     const x = i / N * 6, y = j / N * 6;
     // broad dark maria over a brighter highland background, plus fine speckle
-    const mare = sstep(0.42, 0.58, fbm(x, y, 4, 2.07, 0.55, 5));
-    const fine = fbm(x * 5.3 + 2, y * 5.3 - 1, 3, 2.1, 0.5, 61);
-    const v = lerp(190, 96, mare) * (0.86 + 0.28 * fine);
+    const mare = sstep(0.42, 0.58, fbm(x, y, 4, 2.07, 0.55, A.seedMare));
+    const fine = fbm(x * 5.3 + 2, y * 5.3 - 1, 3, 2.1, 0.5, A.seedFine);
+    let v = lerp(A.high, A.low, mare) * (A.fineLo + A.fineHi * fine);
+    // Jovian impact-flash speckle (the Moon's A.flash is null -> adds nothing)
+    if (A.flash) v += Math.max(0, fbm(x * 17, y * 17, 2, 2.3, 0.5, A.flash.seed) - 0.60) * A.flash.amp;
     const o = (j * N + i) * 4;
-    img.data[o] = v; img.data[o + 1] = v * 0.98; img.data[o + 2] = v * 0.94; img.data[o + 3] = 255;
+    img.data[o] = v * tone[0]; img.data[o + 1] = v * tone[1]; img.data[o + 2] = v * tone[2]; img.data[o + 3] = 255;
   }
   g.putImageData(img, 0, 0);
   const t = toTexture(c, true);
   t.wrapT = THREE.RepeatWrapping;
   return t;
+}
+
+/* Thin wrapper so the boot site and the frozen pixel-identity check keep calling
+   the historical name; identical pixels to makeBodyAlbedo(N, A_MOON). */
+export function makeMoonAlbedo(N = 512) {
+  return makeBodyAlbedo(N, A_MOON);
 }
 
 void ridged;

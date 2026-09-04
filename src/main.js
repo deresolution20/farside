@@ -12,7 +12,7 @@ import { bakeTerrain, Terrain } from './world/terrain.js';
 import { Sky, SKY_MOON } from './world/sky.js';
 import { Props } from './world/props.js';
 import { Dust } from './world/dust.js';
-import { makeEarthTextures, makeMoonAlbedo, makeJoveTextures } from './world/textures.js';
+import { makeEarthTextures, makeMoonAlbedo, makeBodyAlbedo, makeJoveTextures } from './world/textures.js';
 import { Rover, DRIVE, EARTH_RTT } from './game/rover.js';
 import { CameraRig, CAM } from './game/camera.js';
 import { Game, OPS } from './game/gameplay.js';
@@ -200,7 +200,26 @@ function buildWorld(region, baked, tex) {
   const sky = new Sky(e.renderer, e.scene, tex, e.quality, skyCfg);
 
   const terrain = new Terrain(e.renderer, baked, e.quality, e.caps);
-  terrain.uniforms.uAlbedoTex.value = tex.moonAlbedo;
+  // Per-region ground albedo. Moon regions carry no `albedo` bundle -> the shared
+  // tex.moonAlbedo object (identity preserved, so the Moon world is unchanged).
+  // Jovian regions memoize a per-id 512 texture on App.albTex, so a selectRegion
+  // swap-out and back does not regenerate it.
+  let alb;
+  if (region.albedo) {
+    App.albTex = App.albTex || {};
+    alb = App.albTex[region.id] || (App.albTex[region.id] = makeBodyAlbedo(512, region.albedo));
+  } else {
+    alb = tex.moonAlbedo;
+  }
+  terrain.uniforms.uAlbedoTex.value = alb;
+  // The shader ground base is tinted by the region's albedo tone; a Moon region
+  // writes the unmodified default (0.148, 0.129, 0.104). Value mutation only —
+  // the uniform wrapper object is never replaced (it is shared by every ring).
+  {
+    const BASE = [0.148, 0.129, 0.104];
+    const t = region.albedo ? region.albedo.tone : [1, 1, 1];
+    terrain.uniforms.uBaseCol.value.set(BASE[0] * t[0], BASE[1] * t[1], BASE[2] * t[2]);
+  }
   // The terrain's home-planet earthshine adopts the world's sky-bounce palette.
   // Only Jovian regions carry a `ground` array in their sky cfg; the Moon's
   // SKY_MOON has none, so its uEarthCol stays at the default (0.055,0.075,0.115).
@@ -220,7 +239,7 @@ function buildWorld(region, baked, tex) {
   (region.props.posts || []).forEach(([x, z]) => props.buildPost(x, z));
   if (region.props.hub) props.buildHub(region.props.hub[0], region.props.hub[1]);
 
-  const dust = new Dust(e.scene, terrain, terrain.uniforms.uSunDir, e.quality.dust, { g: region.g });
+  const dust = new Dust(e.scene, terrain, terrain.uniforms.uSunDir, e.quality.dust, { g: region.g, albedo: region.dust?.albedo, glow: region.dust?.glow });
   const rover = new Rover(terrain, e.scene, { g: region.g });
   rover.panelTarget = 0;
   const rig = new CameraRig(e.camera, terrain);

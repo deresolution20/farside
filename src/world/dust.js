@@ -53,6 +53,10 @@ export class Dust {
     this.seed = new Float32Array(max);
     this.tint = new Float32Array(max);        // 0 = regolith, 1 = anomalous (bright)
 
+    // Per-body grain palette; absent opts fall back to the Moon values (defaults).
+    const albedo = opts.albedo ? opts.albedo : [0.152, 0.133, 0.108];
+    const glow = opts.glow ? opts.glow : [0.36, 0.52, 0.60];
+
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
     g.setAttribute('aVel', new THREE.BufferAttribute(this.vel, 3));
@@ -67,7 +71,8 @@ export class Dust {
       uniforms: {
         uTex: { value: grainSprite() },
         uSunDir: sunDirRef,
-        uAlbedo: { value: new THREE.Vector3(0.152, 0.133, 0.108) },
+        uAlbedo: { value: new THREE.Vector3(albedo[0], albedo[1], albedo[2]) },
+        uGlow: { value: new THREE.Vector3(glow[0], glow[1], glow[2]) },
         uSunCol: { value: new THREE.Vector3(2.05, 1.94, 1.76) },
         uAmb: { value: new THREE.Vector3(0.048, 0.056, 0.078) },
         uPx: { value: 1 }
@@ -88,7 +93,7 @@ export class Dust {
         }`,
       fragmentShader: /* glsl */`
         precision mediump float;
-        uniform sampler2D uTex; uniform vec3 uSunDir, uAlbedo, uSunCol, uAmb;
+        uniform sampler2D uTex; uniform vec3 uSunDir, uAlbedo, uGlow, uSunCol, uAmb;
         varying float vL, vAng, vStretch, vSeed, vTint;
         void main(){
           vec2 pc = gl_PointCoord - 0.5;
@@ -102,7 +107,7 @@ export class Dust {
           float r2 = dot(nc, nc);
           vec3 N = vec3(nc.x, -nc.y, sqrt(max(1.0 - r2, 0.0)));
           float lam = max(dot(N, normalize(uSunDir)), 0.0);
-          vec3 alb = mix(uAlbedo, vec3(0.36, 0.52, 0.60), vTint);
+          vec3 alb = mix(uAlbedo, uGlow, vTint);
           vec3 col = alb * (0.82 + 0.36 * vSeed) * (lam * uSunCol + uAmb);
           col += vec3(0.10, 0.55, 0.72) * vTint * 0.9;
           float aIn = smoothstep(0.0, 0.10, vL);
