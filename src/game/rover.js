@@ -219,7 +219,7 @@ function buildWheelGeometry() {
    ROVER
    ============================================================ */
 export class Rover {
-  constructor(terrain, scene) {
+  constructor(terrain, scene, opts = {}) {
     this.terrain = terrain;
     this.root = new THREE.Group();
     scene.add(this.root);
@@ -230,6 +230,7 @@ export class Rover {
     this.vel = new THREE.Vector3();
     this.omega = new THREE.Vector3();
     this.mass = MASS;
+    this.g = opts.g ?? MOON_G;
     // box inertia, 1.7 × 0.8 × 2.7 m
     const Ix = MASS / 12 * (0.8 * 0.8 + 2.7 * 2.7);
     const Iy = MASS / 12 * (1.7 * 1.7 + 2.7 * 2.7);
@@ -750,7 +751,7 @@ export class Rover {
     }
 
     /* ---- gravity ---- */
-    force.y -= this.mass * MOON_G;
+    force.y -= this.mass * this.g;
 
     /* ---- attitude control moment gyros: keep air time survivable ---- */
     if (contacts <= 1) {

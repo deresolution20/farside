@@ -39,6 +39,7 @@ const App = {
 const _selRegion = REGIONS.find(r => r.id === App.settings.region);
 if (_selRegion) App.region = _selRegion;
 App.sunAz = App.region.sunAz0;
+App.sunRate = App.region.sun ? App.region.sun.rate : 0.0060;
 $('bootSub').textContent = App.region.tagline;
 
 function guessQuality() {
@@ -208,8 +209,8 @@ function buildWorld(region, baked, tex) {
   (region.props.posts || []).forEach(([x, z]) => props.buildPost(x, z));
   if (region.props.hub) props.buildHub(region.props.hub[0], region.props.hub[1]);
 
-  const dust = new Dust(e.scene, terrain, terrain.uniforms.uSunDir, e.quality.dust);
-  const rover = new Rover(terrain, e.scene);
+  const dust = new Dust(e.scene, terrain, terrain.uniforms.uSunDir, e.quality.dust, { g: region.g });
+  const rover = new Rover(terrain, e.scene, { g: region.g });
   rover.panelTarget = 0;
   const rig = new CameraRig(e.camera, terrain);
 
@@ -298,6 +299,7 @@ async function selectRegion(r) {
 
     Object.assign(App, buildWorld(r, baked, App.tex), { region: r });
     App.sunAz = r.sunAz0;
+    App.sunRate = r.sun ? r.sun.rate : 0.0060;
     applySettings();
 
     progressR(1, 'link established');
@@ -652,8 +654,8 @@ function tick(dt) {
 /* ---------------- the world when nobody is driving ---------------- */
 function idleWorld(dt) {
   App.elapsed += dt;
-  App.sunAz += dt * 0.0060;
-  App.sky.setSun(App.sunAz, sunAltitude(App.sunAz));
+  App.sunAz += dt * App.sunRate;
+  App.sky.setSun(App.sunAz, sunAltitude(App.sunAz, App.region.sun || SUN_MOON));
   syncSun();
   // a slow orbit over the basin behind the menus
   const t = App.elapsed * 0.045;
@@ -695,8 +697,8 @@ function stepWorld(dt, raw, input) {
   App.elapsed += dt;
 
   /* ---- sun: at 72° N it circles rather than arcs ---- */
-  App.sunAz += dt * 0.0060;
-  sky.setSun(App.sunAz, sunAltitude(App.sunAz));
+  App.sunAz += dt * App.sunRate;
+  sky.setSun(App.sunAz, sunAltitude(App.sunAz, App.region.sun || SUN_MOON));
   syncSun();
   if (!App._envT || App.elapsed - App._envT > 6) { App._envT = App.elapsed; sky.markEnvDirty(); }
 
@@ -879,11 +881,15 @@ function stepWorld(dt, raw, input) {
   if (!App._saveT || App.elapsed - App._saveT > 20) { App._saveT = App.elapsed; Save.write(App.region, game.save()); }
 }
 
+const SUN_MOON = { base: 0.42, amp: 0.12, freq: 0.5, phase: -0.4 };
+
 /** At 72° N the sun never gets high and never sets — it circles the horizon,
     bobbing between about 17° and 31°. Long shadows all day, sweeping like a
-    sundial, and a rim wall that keeps its own floor in the dark for hours. */
-function sunAltitude(az) {
-  return 0.42 + Math.sin(az * 0.5 - 0.4) * 0.12;      // 17° … 31°
+    sundial, and a rim wall that keeps its own floor in the dark for hours.
+    The curve and its sweep rate are per-region data now; these are the
+    Moon's, the default for any region that carries none. */
+function sunAltitude(az, S = SUN_MOON) {
+  return S.base + Math.sin(az * S.freq + S.phase) * S.amp;      // 17° … 31°
 }
 
 function syncSun() {

@@ -40,8 +40,9 @@ function grainSprite() {
 }
 
 export class Dust {
-  constructor(scene, terrain, sunDirRef, max = 2200) {
+  constructor(scene, terrain, sunDirRef, max = 2200, opts = {}) {
     this.terrain = terrain;
+    this.g = opts.g ?? MOON_G;
     this.MAX = max;
     this.n = 0;
     this.pos = new Float32Array(max * 3);
@@ -137,7 +138,7 @@ export class Dust {
       this.seed[i] = Math.random();
       this.tint[i] = tint;
       // a grain lives exactly as long as its parabola: 2·v/g, plus a beat on the ground
-      this.maxLife[i] = 2 * vy / MOON_G + 0.55;
+      this.maxLife[i] = 2 * vy / this.g + 0.55;
       this.life[i] = this.maxLife[i];
     }
   }
@@ -148,7 +149,7 @@ export class Dust {
     while (i < this.n) {
       L[i] -= dt;
       const i3 = i * 3;
-      V[i3 + 1] -= MOON_G * dt;                  // vacuum: gravity is the only force
+      V[i3 + 1] -= this.g * dt;                  // vacuum: gravity is the only force
       P[i3] += V[i3] * dt;
       P[i3 + 1] += V[i3 + 1] * dt;
       P[i3 + 2] += V[i3 + 2] * dt;

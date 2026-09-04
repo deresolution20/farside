@@ -92,4 +92,10 @@ re-tuned.
 - [ ] Spec still matches code (no drift)
 
 ---
-_Result / notes:_
+_Result / notes:
+- `src/main.js`: added module constant `SUN_MOON = { base: 0.42, amp: 0.12, freq: 0.5, phase: -0.4 }`; `sunAltitude(az, S = SUN_MOON)` now evaluates `S.base + Math.sin(az * S.freq + S.phase) * S.amp` (comment block kept, one sentence added noting curve+rate are per-region data with Moon defaults). `App.sunRate` set at boot (after saved-region select) and in `selectRegion` immediately after `App.sunAz = r.sunAz0`, both as `r.sun ? r.sun.rate : 0.0060`. `idleWorld` and `stepWorld` advance with `App.sunRate` and evaluate `sunAltitude(App.sunAz, App.region.sun || SUN_MOON)`. `buildWorld` passes `{ g: region.g }` unconditionally to both `Dust` and `Rover` (controller ruling: no Moon special-casing — Moon regions yield `{ g: undefined }` and the `?? MOON_G` default applies).
+- `src/game/rover.js`: constructor is `(terrain, scene, opts = {})`; `this.g = opts.g ?? MOON_G` (import kept as the default); the gravity site (force.y) uses `this.g`.
+- `src/world/dust.js`: constructor is `(scene, terrain, sunDirRef, max = 2200, opts = {})`; `this.g = opts.g ?? MOON_G` (import kept); grain lifetime (`2 * vy / this.g + 0.55`) and vacuum integration (`V[i3+1] -= this.g * dt`) use `this.g`.
+- `git diff src/game/regions.js` empty — no region record edited.
+- Verification: `node --check` green on all of `src/`, `vendor/`, `server.js`. Node identity throwaway: `0.42 + Math.sin(az*0.5 - 0.4)*0.12` vs `sunAltitude(az)` with `SUN_MOON` defaults identical for az ∈ {0, 1.6, 4.35, 6.18} (strict string-match equality, ≪1e-12; e.g. az=0 → both 0.3732697989229619). `node tools/bake-diff.cjs` → BAKE-DIFF PASS, exit 0 (macro/far/det identical, determinism strict). GATE from a clean profile (`/tmp/opencode/ffprof`): `GATE PASS (28/28)`, EXIT 0 — full Anaximenes campaign + Long Shadow sections green. In-page (marionette ExecuteScript on the test Firefox, region=anaximenes): `FARSIDE.rover.g === 1.62`, `FARSIDE.dust.g === 1.62` (dust is on App, so it was readable directly), `FARSIDE.sunRate === 0.006`.
+- Deviations: none.
