@@ -4,32 +4,49 @@ Scope creep and new ideas land **here**, never in the current phase. An item mov
 into a phase spec when it is scheduled; out-of-scope items stay until a phase claims
 them.
 
-## Phase 3 seeds (planets & content — deep-plan when the phase starts)
+## Scheduled into `spec/phases/phase-3-planets-content.md` (2026-09-03)
 
-- **Planet = an extended data bundle**, not a new engine: gravity (1/6 g is a
-  constant in `rover.js` today), sun-altitude cycle (regions differ only in `sunAz0`
-  so far — only the azimuth start; altitude/period are fixed), sky palette + albedo
-  parameters, plus the existing terrain-P/campaign bundle. 2+ worlds beyond
-  Anaximenes & Long Shadow (Product Spec §4 scope).
-- **Per-world content expansion:** the objective DSL and codex/mission shapes are
-  already pure data — new worlds should add new *sample kinds* (the `lore.js`
-  `SAMPLES` key scheme is reusable) and at most one or two prop builders each.
-- **World concepts floated during Phase 2** (unrefined): a low-sun inner-plain basin
-  where headlight driving is the whole mood; a large-pipe-breakout crater field (the
-  Anaximenes pipe lattice is a per-region `anoms.pipes` option — a world that leads
-  with it).
+The entire **Phase 3 seeds** section moved into the phase spec: planet = extended
+data bundle (gravity / sun-altitude-cycle / sky palette / albedo as pure region data),
+2+ worlds beyond Anaximenes & Long Shadow (**Ganymede — THE CHOS PLAIN** and
+**Callisto — CONAMARA**; brainstorm decision: two foreign airless bodies, not a
+Moon+foreign mix), per-world sample-kind expansion (5 new additive `SAMPLES` keys),
+the two unrefined Phase-2 world concepts (low-sun headlight plain → CHOS;
+pipe-breakout crater field → CONAMARA), and the parked **per-region
+sun-altitude-cycle** item (claimed — `region.sun`). The per-region `playableR` item
+remains parked (Phase 3 keeps all four at 432).
 
 ## Parked (explicitly out of scope when noted; revisit per phase)
 
-- Region unlocking / progression gating (Phase 2 parked — both regions always
-  selectable; `settings.region` is a convenience, not a gate).
-- In-game region switching (Phase 2: menu-only; "the save is the exit").
-- Per-region `playableR` and sun-altitude-cycle differences (Phase 2: both 432, only
-  `sunAz0` varies).
-- Per-region rover/prop mechanics beyond `buildPost`/`buildHub`.
-- Per-region audio, save compression, extra save migrations (Phase 2: only the two
-  field renames).
-- A `dispose()` API for world teardown (GC + scene removal deemed sufficient in
-  Phase 2; revisit if a swap ever leaks GPU memory).
-- **Phase 3 guard** (Product Spec §8): if "planet" starts requiring a new code path,
-  split the phase — data bundle in, code path out to here.
+- Region unlocking / progression gating (Phase 2 parked — all regions always
+  selectable; `settings.region` is a convenience, not a gate). Still parked through
+  Phase 3 (four cards, no gates).
+- In-game region switching (Phase 2: menu-only; "the save is the exit"). Still parked
+  through Phase 3.
+- Per-region `playableR` (Phase 2/3: all four regions 432; every P bundle satisfies
+  the rim constraints at 432 — documented per bundle in the Phase 3 spec).
+- Per-region rover/prop mechanics: Phase 3 confirmed the band discipline —
+  foreign g's stay 0.76–1.11× lunar so no suspension re-tuning; a world whose feel
+  *requires* a constant change comes back here (Phase 3 guard) and its g moves
+  toward 1.62 instead.
+- **Atmosphere/haze worlds** (Phase 3 guard: both foreign bodies are airless by
+  choice; the dim-sun mood comes from `sunScale` + sun altitude, not scatter. A
+  world *with* atmosphere is a new lighting-model work item — not a data bundle).
+- **A third foreign body / fifth region** (the bundle proves out at two foreign
+  worlds + two Moon basins; more data later). A **mid-latitude Moon basin** (real
+  day/night from latitude — the variant considered in brainstorm) is the leading
+  candidate for a future home region.
+- Jove companion-moon *proper motion* (Phase 3: static libration wobble, same as
+  Earth's; moving companions are a sky.js flourish, not data).
+- Per-region starfield galactic-band *geometry* (Phase 3: seed-only variation —
+  band orientation stays shared; per-band tilt is a `_buildGalaxy` param if ever
+  wanted).
+- The **meta-narrative** of *who wrote the Jovian directives and why* (Phase 3
+  lore deliberately shows only the directive family — Annex E/F, older than the
+  manifest; answering it is a future story beat, not content padding).
+- Per-region audio, save compression, extra save migrations.
+- A general `dispose()` API for world teardown (Phase 3 extended `Sky.dispose()`
+  as the one targeted case; revisit if a swap ever leaks GPU memory).
+- **Phase 3 guard** (Product Spec §8, active through the phase): if "planet" starts
+  requiring a new code path, split the phase — data bundle in, code path out to
+  here. Outcome logged in the Product Spec changelog at close.
