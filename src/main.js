@@ -9,10 +9,10 @@ import { Audio } from './core/audio.js';
 import { Save } from './core/save.js';
 import { clamp, sstep, lerp } from './core/rng.js';
 import { bakeTerrain, Terrain } from './world/terrain.js';
-import { Sky } from './world/sky.js';
+import { Sky, SKY_MOON } from './world/sky.js';
 import { Props } from './world/props.js';
 import { Dust } from './world/dust.js';
-import { makeEarthTextures, makeMoonAlbedo } from './world/textures.js';
+import { makeEarthTextures, makeMoonAlbedo, makeJoveTextures } from './world/textures.js';
 import { Rover, DRIVE, EARTH_RTT } from './game/rover.js';
 import { CameraRig, CAM } from './game/camera.js';
 import { Game, OPS } from './game/gameplay.js';
@@ -151,16 +151,16 @@ async function boot() {
     Object.assign(tex, makeEarthTextures(), tex);   // existing entries win
   }
   if (!tex.moonAlbedo) tex.moonAlbedo = makeMoonAlbedo();
+  if (!tex.jove) Object.assign(tex, makeJoveTextures());
   progress(0.90, 'downlinking imagery');
 
   progress(0.94, 'assembling K-9');
-  /* The engine, sky, audio, input and texture set are built once and shared by
-     every world; buildWorld owns everything a region has. */
-  const sky = new Sky(engine.renderer, engine.scene, tex, engine.quality);
+  /* The engine, audio, input and texture set are built once and shared by
+     every world; buildWorld owns the rest — the sky included. */
   const audio = new Audio();
   const hud = new HUD(audio);
   const input = new Input($('stage'));
-  Object.assign(App, { sky, audio, hud, input, tex });
+  Object.assign(App, { audio, hud, input, tex });
 
   Object.assign(App, buildWorld(App.region, baked, tex));
 
@@ -186,11 +186,17 @@ async function boot() {
     that wraps a terrain uniform, caches heights, or holds colliders is
     rebuilt per world: Dust wraps terrain.uniforms.uSunDir at construction,
     the clipmap rings live in terrain.group, and a stale reference would
-    render two basins at once. Engine/Sky/Audio/Input/settings/tex are
-    deliberately untouched.
+    render two basins at once. The Sky is world-owned too — each body
+    carries its own sun disc, starfield and home planet, configured from
+    region.sky (SKY_MOON where none). Engine/Audio/Input/HUD/settings/tex
+    are deliberately untouched.
     ============================================================ */
 function buildWorld(region, baked, tex) {
   const e = App.engine;
+
+  // First among the world-owned objects, so the swap teardown is reverse
+  // build order. A region's `sky` bundle drives it; the Moon default is SKY_MOON.
+  const sky = new Sky(e.renderer, e.scene, tex, e.quality, region.sky ?? SKY_MOON);
 
   const terrain = new Terrain(e.renderer, baked, e.quality, e.caps);
   terrain.uniforms.uAlbedoTex.value = tex.moonAlbedo;
@@ -217,12 +223,12 @@ function buildWorld(region, baked, tex) {
   App.hud.bakeMap(terrain, region.name);
 
   const game = new Game({
-    region, terrain, rover, props, dust, sky: App.sky, audio: App.audio,
+    region, terrain, rover, props, dust, sky, audio: App.audio,
     hud: App.hud, engine: e, rig, scene: e.scene, input: App.input
   });
   game.tc = App.settings.tc;
 
-  return { terrain, props, dust, rover, rig, game };
+  return { terrain, props, dust, rover, rig, game, sky };
 }
 
 /* ============================================================
@@ -290,12 +296,14 @@ async function selectRegion(r) {
     /* Tear down exactly what buildWorld owns, in reverse. The game's reset
        drops its scene objects (scan markers, deployed kit) first; the
        terrain group must come off before anything that reads its height
-       field does. */
+       field does. The sky was built first in buildWorld, so it goes last. */
     App.game.reset(false);
     e.scene.remove(App.terrain.group);
     e.scene.remove(App.props.group);
     e.scene.remove(App.dust.points);
     e.scene.remove(App.rover.root);
+    App.sky.dispose();
+    e.scene.remove(App.sky.group);
 
     Object.assign(App, buildWorld(r, baked, App.tex), { region: r });
     App.sunAz = r.sunAz0;

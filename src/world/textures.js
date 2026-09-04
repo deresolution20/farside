@@ -107,6 +107,54 @@ export function makeEarthTextures(W = 1024, H = 512) {
   };
 }
 
+/* ---------------- Jove: banded gas giant, equirectangular ----------------
+   Latitude bands with fbm-wobbled boundaries, fine in-band turbulence, and
+   three standing vortices (the red one south of the equator, as on Jove).
+   It is only ever sampled as a slowly spinning sky disc, so a screen of
+   procedural bands stands in for a photograph. */
+export function makeJoveTextures(W = 1024, H = 512) {
+  const c = canvas(W, H);
+  const g = c.getContext('2d');
+  const img = g.createImageData(W, H);
+  // standing storms: [longitude rad, latitude rad, radius rad]
+  const vort = [[1.70, -0.38, 0.16], [4.40, 0.52, 0.08], [2.90, 0.30, 0.05]];
+  for (let j = 0; j < H; j++) {
+    const lat = (0.5 - j / H) * Math.PI;
+    for (let i = 0; i < W; i++) {
+      const lon = (i / W) * Math.PI * 2;
+      const o = (j * W + i) * 4;
+      // latitude bands; the fbm term wobbles every boundary in longitude
+      const wob = fbm(lon * 2.0 + 5.0, lat * 6.0, 4, 2.1, 0.5, 707) - 0.5;
+      const turb = fbm(lon * 9.0 + 2.0, lat * 24.0 - 1.0, 3, 2.15, 0.5, 991) - 0.5;
+      const band = 0.5 + 0.5 * Math.sin(lat * 13.0 + wob * 5.0);
+      let r = lerp(186, 236, band) + turb * 26;
+      let gg = lerp(146, 224, band) + turb * 24;
+      let b = lerp(102, 204, band) + turb * 22;
+      // vortices: a banded rim and a rust core, blended in by great-circle distance
+      for (let k = 0; k < 3; k++) {
+        const vl = vort[k][0], vla = vort[k][1], vr = vort[k][2];
+        const cosD = Math.sin(lat) * Math.sin(vla) + Math.cos(lat) * Math.cos(vla) * Math.cos(lon - vl);
+        const d = Math.acos(clamp(cosD, -1, 1));
+        const rim = sstep(vr * 1.9, vr * 1.15, d);
+        if (rim > 0) {
+          const swirl = 0.5 + 0.5 * Math.sin(d * 42.0 - lon * 2.0);
+          r = lerp(r, 190 + swirl * 20, rim * 0.55);
+          gg = lerp(gg, 148 + swirl * 14, rim * 0.50);
+          b = lerp(b, 110, rim * 0.50);
+          const core = sstep(vr, vr * 0.55, d);
+          if (core > 0) {
+            r = lerp(r, 178, core * 0.8); gg = lerp(gg, 96, core * 0.8); b = lerp(b, 78, core * 0.8);
+          }
+        }
+      }
+      img.data[o] = clamp(r, 0, 255); img.data[o + 1] = clamp(gg, 0, 255);
+      img.data[o + 2] = clamp(b, 0, 255); img.data[o + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return { jove: toTexture(c, true) };
+}
+
 /* ---------------- lunar albedo: mare / highland mottling ---------------- */
 export function makeMoonAlbedo(N = 512) {
   const c = canvas(N, N);

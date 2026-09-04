@@ -130,3 +130,70 @@ and the `Game` receives the world's sky via its ctx.
 
 ---
 _Result / notes:_
+
+**Done 2026-09-04.** `Sky(renderer, scene, textures, quality, cfg = SKY_MOON)` with
+`SKY_MOON = { planet: 'earth', sunAngular: 0.00930, sunScale: 1.0, starSeed: 0xA17A6 }`.
+Sky constructed FIRST in `buildWorld` (`region.sky ?? SKY_MOON`), returned from it,
+passed to the Game ctx as local `sky`; boot no longer builds the Sky; `selectRegion`
+teardown gains `App.sky.dispose()` + `e.scene.remove(App.sky.group)` after the four
+existing removes (reverse build order). `Sky.dispose()` now idempotent (`_disposed`
+guard) covering pmrem, envRT, env-sphere, galaxy, stars, sun, earth+glow, jove,
+companion Points + its local sprite texture (shared boot textures never disposed).
+`'jove'` path: sphere `R = 8000*j.angular*0.5` with soft-terminator uSun shading +
+spin, `this.joveDir` from `(j.az, j.alt)`, one companion `THREE.Points` (per-dot
+`aSize = 7400*angular` at the 7400 m billboard, libration wobble reused,
+`companionSprite()` local copy of dust's radial-falloff pattern — no dust.js import).
+`makeJoveTextures(W=1024, H=512)` = fbm-wobbled latitude bands + 3 vortices, sRGB,
+`toTexture` (Repeat/Clamp), returns `{ jove }`; boot fills `if (!tex.jove)
+Object.assign(tex, makeJoveTextures());`.
+
+**Moon parity (R-PARITY: two clean-profile boots, HEAD `5d31768` vs task build —
+no stash; probe `t2-probe.cjs parity`, files `/tmp/opencode/t2-parity-{before,after}.json`):**
+
+| value | before (HEAD) | after (task) | result |
+|---|---|---|---|
+| `FARSIDE.sky.earth` present | true | true | equal |
+| `starMat.uniforms.uInt` | 0.3400000000000001 | 0.3400000000000001 | bitwise equal |
+| `sun.geometry.boundingSphere.radius` | 404.6826401963688 | 404.6826401963688 | bitwise equal |
+| `stars` position array first 1000 floats | (seed 0xA17A6) | same | bitwise equal |
+| `envMat.uGround` | [0.19, 0.168, 0.14] | [0.19, 0.168, 0.14] | equal |
+| `envMat.uSunCol` | [2.6, 2.46, 2.24] | [2.6, 2.46, 2.24] | equal |
+| env vertex shader string | — | identical | bitwise equal |
+| env fragment shader string | earth tint inline | `uHomeTint` uniform | 3 lines (R-ENV) |
+
+R-ENV: new uniform `uHomeTint` default `new THREE.Vector3(0.30,0.44,0.72).multiplyScalar(2.2)`;
+measured in-page: `[0.66000000000000003, 0.96800000000000008, 1.5840000000000001]` —
+exactly the folded constants in double precision, shader keeps the same
+`uHomeTint * smoothstep(0.99930, 0.99968, e)` shape (no forked source). Jove default
+tint (0.55, 0.44, 0.32) at the jove direction.
+
+**Jove smoke (R-JOVE-SMOKE, throwaway injected module, clean profile; `/tmp/opencode/t2-jove.json`):**
+`new Sky(page renderer, scratch Scene, page tex, page quality, { planet:'jove', jove:{az 4.9,
+alt 0.22, angular 0.13, companions [[1.2,0.10,0.004,[1,1,1]],[3.3,−0.05,0.003,[0.9,0.85,0.75]]]},
+sunAngular 0.0018, sunScale 0.55, starSeed 0x71F0C, ground [0.17,0.165,0.155] })` →
+`this.jove` exists, `boundingSphere.radius` 520.0000203064474 vs 8000·0.13·0.5 = 520 (rel
+3.9e-8; Float32 vertex round-trip — absolute 1e-6 unattainable for a real SphereGeometry,
+relative 1e-6 met); companion `THREE.Points` with 2 points at dir(az,alt)·7400 (max abs diff
+2.4e-4 on ~7400-scale values, rel 3.2e-8, Float32 attribute); `aSize` [29.6, 22.2] = 7400·angular;
+tints preserved; starfield first-1000: 1000/1000 floats differ from the Moon seed's; sun quad
+half-extent 55.38461685180664 vs 8000·0.0018/0.130·0.5 = 55.38461538461539 (rel 2.6e-8,
+Float32 bbox); `uGround` [0.17,0.165,0.155], `uSunCol` [1.43,1.353,1.232] (2.6/2.46/2.24 ×0.55),
+`uHomeTint` [0.55,0.44,0.32]; `dispose()` twice without error; test Sky removed from scratch
+scene. All pass.
+
+**Swap smoke (AC9, in-page, clean profile; 12/12 pass):** boot AX → `#region-longshadow`
+→ `#regionload` sheet → menu: `FARSIDE.sky` new instance, old sky group NOT in
+`engine.scene.children`, `FARSIDE.sky.earth` present (LS is a Moon world), `_envDirty`
+false immediately and still false +4 s (single mandated pmrem rebuild, no storm) →
+screenshot `.shots/task2-ls-menu.png` → select `#region-anaximenes` back: AC2 value set
+identical again (stars bitwise, sunRadius/uGround/uSunCol/uInt to 1e-6), zero console
+errors through both swaps.
+
+**Gate + guards:** `node --check` green on all of `src/`+`vendor/`+`server.js`;
+`node tools/bake-diff.cjs` → `BAKE-DIFF PASS (6.1 s)`, exit 0; full gate from clean
+profile → **GATE PASS (28/28)**, exit 0 (~30 min; both Moon worlds + swap exercised).
+
+**Deviations:** none from the brief/rulings. Only float-tolerance note: geometry-derived
+values (sphere radius, quad half-extent, companion positions) read back through Float32
+buffers, so they are asserted at relative 1e-6 (max absolute 2e-5); the cross-boot Moon
+parity of the same values is bitwise-identical.

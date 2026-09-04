@@ -1,17 +1,26 @@
 /* ============================================================
-   THE SKY OVER ANAXIMENES  (72.5°N, 45.0°W — near the north-west limb)
+   THE SKY OF A WORLD
    ------------------------------------------------------------
    No atmosphere means: black sky at noon, stars that do not twinkle,
    a sun that never softens, and a terminator you can stand on.
-   At this latitude the sun does not arc overhead — it circles the
-   horizon at 4°–19°, so shadows sweep around you like a sundial.
-   Earth hangs low over the northern rim and barely moves at all.
+   On the Moon the sun circles the horizon at 4°–19° at high
+   northern latitudes, so shadows sweep around you like a sundial,
+   and Earth hangs low over the rim and barely moves at all.
+
+   The sky is world-owned: each body is configured from a `cfg`
+   bundle (region.sky, falling back to SKY_MOON — today's
+   constants, byte for byte). A 'jove' world gets a procedural
+   gas giant, Galilean companion dots, its own sun disc size and
+   light scale, and a different starfield.
    ============================================================ */
 import * as THREE from 'three';
 import { makeRNG, clamp, sstep, lerp } from '../core/rng.js';
 
-const SUN_ANGULAR = 0.00930;     // 0.53° — the real solar disc from 1 AU
 const EARTH_ANGULAR = 0.0327;    // ~1.9° from the Moon: four sun-widths across
+
+/* The Moon's sky, as a region bundle: exactly today's constants. A region
+   without a `sky` field gets this one, so its world keeps today's sky. */
+export const SKY_MOON = { planet: 'earth', sunAngular: 0.00930, sunScale: 1.0, starSeed: 0xA17A6 };
 
 /* Blackbody -> linear RGB, good enough for stellar colour */
 function kelvinToRGB(k, out) {
@@ -26,11 +35,43 @@ function kelvinToRGB(k, out) {
   return out;
 }
 
+/* A soft dot for the Galilean companions — the same radial-falloff-with-noise
+   pattern the dust grains use (copied, not imported: sky stays self-contained
+   and the world/ modules do not reach across to borrow a 15-line helper). */
+function companionSprite() {
+  const S = 64;
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  g.addColorStop(0, 'rgba(255,255,255,0.98)');
+  g.addColorStop(0.42, 'rgba(255,255,255,0.55)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.beginPath(); x.arc(S / 2, S / 2, S / 2, 0, 6.2832); x.fill();
+  const img = x.getImageData(0, 0, S, S), p = img.data;
+  const hs = (i, j) => { const s = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return s - Math.floor(s); };
+  const vn = (a, b) => {
+    const i = Math.floor(a), j = Math.floor(b);
+    let fa = a - i, fb = b - j; fa = fa * fa * (3 - 2 * fa); fb = fb * fb * (3 - 2 * fb);
+    const p00 = hs(i, j), p10 = hs(i + 1, j), p01 = hs(i, j + 1), p11 = hs(i + 1, j + 1);
+    return p00 + (p10 - p00) * fa + (p01 - p00) * fb + (p00 - p10 - p01 + p11) * fa * fb;
+  };
+  for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
+    const o = (j * S + i) * 4;
+    const n = vn(i * 0.30, j * 0.30) * 0.62 + vn(i * 0.8 + 9, j * 0.8 + 3) * 0.38;
+    p[o + 3] = Math.min(255, p[o + 3] * (0.42 + 0.58 * n));
+  }
+  x.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class Sky {
-  constructor(renderer, scene, textures, quality) {
+  constructor(renderer, scene, textures, quality, cfg = SKY_MOON) {
     this.renderer = renderer;
     this.scene = scene;
     this.quality = quality;
+    this.cfg = cfg;
     this.group = new THREE.Group();
     this.group.renderOrder = -1000;
     scene.add(this.group);
@@ -44,7 +85,7 @@ export class Sky {
     this._buildGalaxy();
     this._buildStars();
     this._buildSun();
-    this._buildEarth(textures);
+    this._buildPlanet(textures, cfg);
     this._buildEnv();
   }
 
@@ -87,7 +128,7 @@ export class Sky {
   /* ---------------- stars: steady, hard, airless ---------------- */
   _buildStars() {
     const N = this.quality.stars;
-    const rng = makeRNG(0xA17A6);
+    const rng = makeRNG(this.cfg.starSeed);
     const pos = new Float32Array(N * 3);
     const col = new Float32Array(N * 3);
     const mag = new Float32Array(N);
@@ -189,12 +230,18 @@ export class Sky {
           gl_FragColor = vec4(col*uInt, a2);
         }`
     });
-    const D = 8000 * SUN_ANGULAR / 0.130 * 0.5;    // disc occupies r=0.13 of the quad
+    const D = 8000 * this.cfg.sunAngular / 0.130 * 0.5;    // disc occupies r=0.13 of the quad
     this.sun = new THREE.Mesh(new THREE.PlaneGeometry(D * 2, D * 2), mat);
     this.sun.frustumCulled = false;
     this.sun.renderOrder = -998;
     this.sunMat = mat;
     this.group.add(this.sun);
+  }
+
+  /* ---------------- the home planet ---------------- */
+  _buildPlanet(tex, cfg) {
+    if (cfg.planet === 'jove') this._buildJove(tex, cfg.jove);
+    else this._buildEarth(tex);
   }
 
   /* ---------------- Earth, low over the northern rim ---------------- */
@@ -261,26 +308,122 @@ export class Sky {
     this.group.add(this.earthGlow);
   }
 
+  /* ---------------- Jove, high in the foreign sky ----------------
+     A banded gas giant with its great moons. Same construction as Earth:
+     a billboarded sphere at 7400 m inside the camera-tracking group,
+     soft day/terminator shading driven by the sun each frame, slow spin.
+     `j = { az, alt, angular, companions: [[az, alt, angular, tint], …] }`. */
+  _buildJove(tex, j) {
+    const R = 8000 * j.angular * 0.5;
+    const g = new THREE.SphereGeometry(R, 96, 64);
+    this.joveMat = new THREE.ShaderMaterial({
+      fog: false, depthWrite: false, depthTest: true, transparent: true,
+      uniforms: {
+        uDay: { value: tex.jove },
+        uSun: { value: new THREE.Vector3(1, 0, 0) }, uInt: { value: 1.0 }, uSpin: { value: 0 }
+      },
+      vertexShader: `varying vec3 vN; varying vec2 vUv;
+        void main(){ vN = normalize(mat3(modelMatrix)*normal); vUv = uv;
+          gl_Position = projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0); }`,
+      fragmentShader: /* glsl */`
+        precision highp float; varying vec3 vN; varying vec2 vUv;
+        uniform sampler2D uDay; uniform vec3 uSun; uniform float uInt, uSpin;
+        void main(){
+          vec2 uv = vec2(fract(vUv.x + uSpin), vUv.y);
+          float lam = dot(vN, uSun);
+          float lit = smoothstep(-0.10, 0.16, lam);            // soft terminator, Earth-like
+          vec3 col = texture2D(uDay, uv).rgb * lit * 2.05;
+          gl_FragColor = vec4(col*uInt, 1.0);
+        }`
+    });
+    this.jove = new THREE.Mesh(g, this.joveMat);
+    this.jove.frustumCulled = false;
+    this.jove.renderOrder = -997;
+    this.group.add(this.jove);
+
+    // fixed bearing in the foreign sky; no libration — Jove is not tidally locked
+    const ca = Math.cos(j.alt);
+    this.joveDir = new THREE.Vector3(ca * Math.cos(j.az), Math.sin(j.alt), ca * Math.sin(j.az)).normalize();
+
+    // Galilean moons: one Points cloud, each dot sized by its angular size at
+    // the same 7400 m billboard distance as the planet, wobbled by the same
+    // libration wobble the Earth carries.
+    const list = j.companions || [];
+    if (list.length) {
+      const pos = new Float32Array(list.length * 3);
+      const size = new Float32Array(list.length);
+      const tint = new Float32Array(list.length * 3);
+      this.companions = [];
+      list.forEach((c, i) => {
+        const [az, alt, angular, t] = c;
+        const cca = Math.cos(alt);
+        pos[i * 3] = cca * Math.cos(az) * 7400;
+        pos[i * 3 + 1] = Math.sin(alt) * 7400;
+        pos[i * 3 + 2] = cca * Math.sin(az) * 7400;
+        size[i] = 7400 * angular;              // world-space dot diameter at the billboard
+        tint[i * 3] = t[0]; tint[i * 3 + 1] = t[1]; tint[i * 3 + 2] = t[2];
+        this.companions.push({ az0: az, alt0: alt });
+      });
+      const pg = new THREE.BufferGeometry();
+      pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      pg.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+      pg.setAttribute('aTint', new THREE.BufferAttribute(tint, 3));
+      this.compSprite = companionSprite();
+      this.compMat = new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, depthTest: true, fog: false,
+        uniforms: { uTex: { value: this.compSprite }, uScale: { value: 400 } },
+        vertexShader: `attribute float aSize; attribute vec3 aTint;
+          varying vec3 vT; uniform float uScale;
+          void main(){
+            vT = aTint;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = aSize * (uScale / max(0.001, -mv.z));
+            gl_Position = projectionMatrix * mv;
+          }`,
+        fragmentShader: /* glsl */`
+          precision highp float; varying vec3 vT; uniform sampler2D uTex;
+          void main(){
+            float a = texture2D(uTex, gl_PointCoord).a;
+            if (a < 0.01) discard;
+            gl_FragColor = vec4(vT * 1.5, a);
+          }`
+      });
+      this.companion = new THREE.Points(pg, this.compMat);
+      this.companion.frustumCulled = false;
+      this.companion.renderOrder = -996;
+      this.companionPositions = pg.getAttribute('position');
+      this.group.add(this.companion);
+    }
+  }
+
   /* ---------------- image-based lighting ----------------
      On an airless world the environment is: the sun, the black sky,
-     Earth, and a very bright ground bounce. That last one is what
-     actually lights the underside of the rover. */
+     the home planet, and a very bright ground bounce. That last one is
+     what actually lights the underside of the rover. All three sources
+     are cfg-driven; under SKY_MOON every value is exactly today's
+     constant (the home-planet tint is the folded 0.30/0.44/0.72 × 2.2). */
   _buildEnv() {
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
     this.pmrem.compileEquirectangularShader();
     this.envScene = new THREE.Scene();
+    const cfg = this.cfg;
+    const ground = cfg.ground || [0.19, 0.168, 0.140];
+    const homeTint = cfg.planet === 'jove'
+      ? new THREE.Vector3(0.55, 0.44, 0.32)
+      : new THREE.Vector3(0.30, 0.44, 0.72).multiplyScalar(2.2);
     this.envMat = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
       uniforms: {
         uSun: { value: new THREE.Vector3(1, 0.2, 0) },
         uEarth: { value: new THREE.Vector3(0, 0.3, -1) },
-        uGround: { value: new THREE.Vector3(0.19, 0.168, 0.140) },
-        uSunCol: { value: new THREE.Vector3(2.6, 2.46, 2.24) }
+        uGround: { value: new THREE.Vector3(ground[0], ground[1], ground[2]) },
+        uSunCol: { value: new THREE.Vector3(2.6, 2.46, 2.24).multiplyScalar(cfg.sunScale) },
+        uHomeTint: { value: homeTint }
       },
       vertexShader: `varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
       fragmentShader: /* glsl */`
         precision highp float; varying vec3 vD;
-        uniform vec3 uSun, uEarth, uGround, uSunCol;
+        uniform vec3 uSun, uEarth, uGround, uSunCol, uHomeTint;
         void main(){
           vec3 d = normalize(vD);
           vec3 col = vec3(0.0018, 0.0022, 0.0038);            // starlight floor
@@ -292,9 +435,9 @@ export class Sky {
           float s = dot(d, normalize(uSun));
           col += uSunCol * 30.0 * smoothstep(0.99987, 0.99995, s);
           col += uSunCol * 0.55 * pow(max(s,0.0), 220.0);
-          // Earth
+          // the home planet (Earth — or Jove, in its warm tint)
           float e = dot(d, normalize(uEarth));
-          col += vec3(0.30,0.44,0.72) * 2.2 * smoothstep(0.99930, 0.99968, e);
+          col += uHomeTint * smoothstep(0.99930, 0.99968, e);
           gl_FragColor = vec4(col, 1.0);
         }`
     });
@@ -305,7 +448,9 @@ export class Sky {
 
   refreshEnv() {
     this.envMat.uniforms.uSun.value.copy(this.sunDir);
-    this.envMat.uniforms.uEarth.value.copy(this.earthDir);
+    // uEarth is the home-planet direction: Earth's (wobbling) bearing on Moon
+    // worlds, Jove's fixed bearing on Jovian ones
+    this.envMat.uniforms.uEarth.value.copy(this.jove ? this.joveDir : this.earthDir);
     const old = this.envRT;
     this.envRT = this.pmrem.fromScene(this.envScene, 0, 1, 4000);
     if (old) old.dispose();
@@ -327,17 +472,37 @@ export class Sky {
     this.sun.position.copy(camera.position).addScaledVector(this.sunDir, 7600);
     this.sun.quaternion.copy(camera.quaternion);
 
-    // Earth: fixed in the lunar sky (tidal lock) with a slow libration wobble
     const lib = elapsed * 0.0021;
-    const az = 1.62 + Math.sin(lib) * 0.055;
-    const alt = 0.255 + Math.cos(lib * 0.83) * 0.030;
-    this.earthDir.set(Math.cos(alt) * Math.cos(az), Math.sin(alt), Math.cos(alt) * Math.sin(az)).normalize();
-    const ep = _v.copy(camera.position).addScaledVector(this.earthDir, 7400);
-    this.earth.position.copy(ep);
-    this.earthGlow.position.copy(ep);
-    this.earth.rotation.y = -elapsed * 0.0009;
-    this.earthMat.uniforms.uSun.value.copy(this.sunDir);
-    this.earthGlow.material.uniforms.uSun.value.copy(this.sunDir);
+    if (this.earth) {
+      // Earth: fixed in the lunar sky (tidal lock) with a slow libration wobble
+      const az = 1.62 + Math.sin(lib) * 0.055;
+      const alt = 0.255 + Math.cos(lib * 0.83) * 0.030;
+      this.earthDir.set(Math.cos(alt) * Math.cos(az), Math.sin(alt), Math.cos(alt) * Math.sin(az)).normalize();
+      const ep = _v.copy(camera.position).addScaledVector(this.earthDir, 7400);
+      this.earth.position.copy(ep);
+      this.earthGlow.position.copy(ep);
+      this.earth.rotation.y = -elapsed * 0.0009;
+      this.earthMat.uniforms.uSun.value.copy(this.sunDir);
+      this.earthGlow.material.uniforms.uSun.value.copy(this.sunDir);
+    }
+    if (this.jove) {
+      const jp = _v.copy(camera.position).addScaledVector(this.joveDir, 7400);
+      this.jove.position.copy(jp);
+      this.jove.rotation.y = -elapsed * 0.0021;
+      this.joveMat.uniforms.uSun.value.copy(this.sunDir);
+      if (this.companion) {
+        this.compMat.uniforms.uScale.value = this.renderer.domElement.height * 0.5;
+        for (let i = 0; i < this.companions.length; i++) {
+          const c = this.companions[i];
+          // each moon keeps its bearing with the same libration wobble as Earth
+          const faz = c.az0 + Math.sin(lib + i * 2.39) * 0.055;
+          const falt = c.alt0 + Math.cos(lib * 0.83 + i * 2.39) * 0.030;
+          const fa = Math.cos(falt);
+          this.companionPositions.setXYZ(i, fa * Math.cos(faz) * 7400, Math.sin(falt) * 7400, fa * Math.sin(faz) * 7400);
+        }
+        this.companionPositions.needsUpdate = true;
+      }
+    }
 
     // Sunlight washes the star field out of any real exposure; keep a trace.
     const wash = lerp(1.0, 0.34, sstep(-0.02, 0.13, this.sunDir.y));
@@ -349,9 +514,29 @@ export class Sky {
 
   markEnvDirty() { this._envDirty = true; }
 
+  /* Idempotent: the world swap calls it once, and a second call (a stray
+     teardown or a rebuild) must not touch anything twice. Shared boot
+     textures (Earth maps, the region albedo) are never disposed here —
+     only this sky's own geometries, materials and the companion sprite. */
   dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
     this.pmrem.dispose();
     if (this.envRT) this.envRT.dispose();
+    const drop = (o) => {
+      if (!o) return;
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    };
+    drop(this.envScene.children[0]);          // the IBL probe sphere
+    drop(this.galaxy);
+    drop(this.stars);
+    drop(this.sun);
+    drop(this.earth);
+    drop(this.earthGlow);
+    drop(this.jove);
+    drop(this.companion);
+    if (this.compSprite) this.compSprite.dispose();
   }
 }
 
