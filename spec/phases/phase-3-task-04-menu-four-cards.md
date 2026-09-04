@@ -57,10 +57,85 @@ cards must look and behave as today.
 
 ## Verification gate (run before merge)
 
-- [ ] Acceptance criteria all met
-- [ ] GATE PASS (28/28) clean profile
-- [ ] Layout screenshots in result notes
-- [ ] Spec still matches code (no drift)
+- [x] Acceptance criteria all met
+- [x] GATE PASS (28/28) clean profile
+- [x] Layout screenshots in result notes
+- [x] Spec still matches code (no drift)
 
 ---
 _Result / notes:_
+
+**Implementation (CSS-only, +4 lines in src/ui/styles.css):** `#regionCards:has(>
+.region-card:nth-child(4)){display:grid;grid-template-columns:1fr 1fr}` after the
+picker block, and `#regionCards:has(> .region-card:nth-child(4)){grid-template-columns:1fr}`
+inside the existing narrow media block. Gating on the 4th card via `:has()` leaves the
+two-card flex row byte-identically unchanged; with 4 cards the 540 px container reflows
+to a 2×2 grid (10 px gap from the base rule) and narrow widths to a 1-col stack.
+Firefox 154 supports `:has` (since 121). No JS touched ⇒ no class hook needed.
+
+**AC1 — 4-card grid (R-AC1 stub-DOM implementation, 1280×800 boot, viewport 1280×715):**
+as written, AC1 is not executable (renderRegionCards closes over module-scope REGIONS;
+an injected module can't re-bind it) — so, per R-AC1, the two real live cards
+(`#region-anaximenes [.sel]`, `#region-longshadow`) plus two stub cards built by
+reproducing renderRegionCards' exact generated markup (main.js:288-291) were injected
+in-page: `#region-ganymede` (GANYMEDE / JOVIAN · CALAIS TERRAE / NO SURVEY — READY FOR
+DESCENT, `rc-status none`) and `#region-callisto` (CALLISTO / JOVIAN · VORG TERRAE /
+SURVEY IN PROGRESS — DEEP SCAN, `rc-status ``). Measured: 2×2 confirmed (rows equal-top,
+cols equal-left, row 2 below row 1, col 2 right); widths [265.0, 265.0, 265.0, 265.0] px
+(equal; (540−10)/2 per 1fr col); zero card-pair overlap; docScrollWidth 1280 ≤
+innerWidth 1280 ⇒ no horizontal scroll; `.sel` renders (card 1: cyan border + 2 px left
+bar, box 265×78); all cards inside the 540 px wrapper (L108).
+Screenshot: `.shots/p4cards4.png`. Real four-card render proven later by gate G29 (task 7).
+
+**AC2 — narrow 1-column (R-AC2 second Firefox, profile /tmp/opencode/ffprof2,
+`user_pref("marionette.port", 2829)` in user.js, `-width 420 -height 800`):**
+Firefox 154 enforces a 500 px minimum browser-window width — both `-width 420` and
+`WebDriver:SetWindowRect {420×800}` clamped (measured: before=[500,715], after=[500,663]).
+At that 500 px window (narrow branch active, vw ≤ 700): 4 cards stack 1-col, same left
+38.0, full width 424.0 (= wrapper width), vertically stacked, docScrollWidth 500 = vw
+⇒ no h-scroll. For the exact 420 px condition (keyboard zoom via WebDriver:PerformActions
+Ctrl+= did not respond in this build), a real 420×800 top-level window was opened via
+page-side `window.open('http://localhost:8080/','t4pop','width=420,height=800')` — an
+actual chromeless window (no emulation: same page, same CSS, media query evaluated for
+real against 420 px), then Marionette SwitchToWindow + measure: viewport exactly
+420×800; 4 cards 1-col, left 34.8, all full width 350.4 (= 92vw − 2×18 px padding =
+386.4 − 36.0), stacked, docScrollWidth 420 = vw ⇒ no h-scroll. The narrow branch is a
+single binary media query (`max-width:700px`) with no sub-breakpoints between 420 and
+500, so both windows exercise the same rules. Screenshots: `.shots/p4narrow2.png`
+(2 real cards, 500 px), `.shots/p4narrow4.png` (4 stub cards, 500 px),
+`.shots/p4narrow420.png` (4 stub cards, 420 px popup).
+
+**AC3 — current two-card menu unchanged (R-AC3, no full pre-task gate run):**
+pre-task menu captured on a clean-profile boot of the pre-change code
+(`.shots/p4menu_pre.png`) and post-task on a fresh clean-profile boot
+(`.shots/p4menu_post.png`). Deterministic layout oracle — getBoundingClientRect of
+#regionCards, each .region-card, and each rc-name/rc-sub/rc-status line in both boots:
+**every field exactly float-equal, 0 deltas** (cards: card 1 L108.0 T382.23333740234375
+W265.0 H78.0, card 2 L383.0 same T/W/H; wrapper L108.0 T382.23333740234375 W540.0 H78.0;
+inner lines identical too). Guaranteed structurally: the grid rules only fire at 4+
+cards via :has(), so the two-card menu is governed by the byte-identical old rules.
+Full-frame diff (PIL, both 1280×715): mean pixel delta 0.0127, max 8, 0.0000 of pixels
+with channel-sum delta > 6 — encoder noise only, zero layout shift. Card click-select /
+status lines / settings.region persistence: unchanged (gate G22–G27 pass, below).
+
+**AC4 — no .panel at overlay scope:** grep-verified; the only new selectors are
+`#regionCards:has(> .region-card:nth-child(4))` (both occurrences) — existing
+`.region-card`/`#regionCards` names, no new classes, no `.panel`.
+
+**node --check:** green on all files under src/, vendor/ and server.js (CSS-only change;
+run as the regression line per the verification sequence).
+
+**GATE:** `GATE PASS (28/28)`, exit 0, clean profile /tmp/opencode/ffprof — full campaign
+plus G22 (both cards + status lines), G23 (select-swap), G24 (Long Shadow L01 playable),
+G25/G26 (save + resume), G27 (switch back, save intact), G28 (bake determinism).
+
+**Commit:** `feat: region picker four-card layout` — src/ui/styles.css only.
+
+**Test-driver note:** throwaway driver at /tmp/opencode/t4.cjs (raw-TCP Marionette,
+same protocol as tools/gate.cjs; phases pre/post/narrow; writes /tmp/opencode/bbox_*.json,
+assert4.json, assert_narrow.json, assert_narrow420.json). Gotchas: `WebDriver:NewSession`
+required before navigate; `GetWindowHandles` returns a bare array in this build (not
+{value}); `WebDriver:SendKeys` does not exist (PerformActions only); sessions in this
+build drop when the client disconnects (all work per run is one connection); the gate
+browser profile (/tmp/opencode/ffprof) and the user's browsers were never touched by the
+test phases (only /tmp/opencode/ffprof and ffprof2 ever launched/killed).

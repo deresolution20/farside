@@ -121,6 +121,9 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 .region-card .rc-status{margin-top:9px;font-size:9px;letter-spacing:.15em;color:var(--cyan)}
 .region-card .rc-status.done{color:var(--amber)}
 .region-card .rc-status.none{color:rgba(216,210,198,.42)}
+/* 4+ regions (Phase 3 Jovians) reflow to a 2×2 grid. Gated on the 4th card via
+   :has() so the two-card flex row above keeps its current geometry untouched. */
+#regionCards:has(> .region-card:nth-child(4)){display:grid;grid-template-columns:1fr 1fr}
 
 /* ---------------- region-load overlay (world swap, menu only) ----------------
    Borrows the boot look for a sibling sheet, never #boot's state. Sized in px
@@ -603,6 +606,7 @@ kbd{display:inline-block;min-width:20px;text-align:center;padding:2px 6px;border
   .btn{padding:14px 16px;font-size:11px}
   .brief{font-size:11.5px;line-height:1.7;margin:16px 0 20px}
   #regionCards{flex-direction:column;max-width:none;margin:16px 0 18px}
+  #regionCards:has(> .region-card:nth-child(4)){grid-template-columns:1fr}
   .title{letter-spacing:.30em;margin-right:-.30em}
   .panel-head{height:52px;padding:0 16px}
   .settings{inset:52px 0 74px 0;padding:14px;grid-template-columns:1fr;gap:8px}
