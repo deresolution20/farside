@@ -1,12 +1,38 @@
 # HANDOFF — farside (browser rebase)
 
-_Last session: 2026-09-02. This file supersedes memory from prior sessions._
+_Last session: 2026-09-05. This file supersedes memory from prior sessions._
 
 ## Where we are
 
-**Phase 2 — regions / levels — is CLOSED (2026-09-02, gate 28/28, exit 0).** The game
-is **FARSIDE — The Knocking at Anaximenes**, now with **two selectable basins** on the
-menu:
+**Phase 3 (planets & content) is IN PROGRESS — tasks 1–5 of 7 closed.** Deep plan:
+`spec/phases/phase-3-planets-content.md` (task table with statuses); the phase-2 text
+below is the still-true baseline it builds on.
+
+- The planet abstraction exists and is proven by one foreign world:
+  - **Tasks 1–4** (committed): per-region `sun` cycle + `g` (Moon defaults bit-exact),
+    world-owned `Sky(renderer, scene, textures, quality, cfg)` with `makeJoveTextures`
+    + Galilean companion dots, per-region `albedo` (`makeBodyAlbedo(N, A)` + `A_MOON`
+    pixel-identical wrapper) + `uBaseCol` base tint + dust palette, four-card menu.
+  - **Task 5** (`3354e67`): **THE CHOS PLAIN** (`ganymede`) — first foreign world, full
+    5-mission campaign + THE ARRIVAL ending + `frost`/`ring` samples. Driver 61/61,
+    gate 28/28, evidence in `spec/evidence/phase-3/chosing_*`. The gate's two menu
+    polls now expect the specific Moon card ids (3+ regions render — do not revert to
+    a card-count poll).
+- **Next: task 6 — CONAMARA** (`callisto`) + the one new prop builder
+  **`buildBreakout`** (phase spec §3.9, task spec
+  `spec/phases/phase-3-task-06-conamara-world.md`); then task 7: gate G29–G40
+  (28→40), evidence, Product Spec + ARCHITECTURE + this file rewritten at close.
+- Throwaway drivers live in `/tmp/opencode/` (NOT committed): `chos5-campaign.cjs`
+  (phase-3 campaign-driver pattern — clone it for CONAMARA; capture stderr this time:
+  `2>&1`), `chos5-mirror.mjs` (node full-bake terrain sampler mirror for tuning),
+  probe scripts. Gate logs: `/tmp/opencode/gate-task5.log`.
+
+_Phase-2 baseline (still true):_ Phase 2 — regions / levels — closed 2026-09-02
+(gate 28/28). The game is **FARSIDE — The Knocking at Anaximenes** with the two Moon
+basins **ANAXIMENES** (campaign, `farside.anaximenes.v3`) and **THE LONG SHADOW**
+(`farside.longshadow.v1`) selectable on the menu; world is data
+(`bakeTerrain(report, P)` + `REGIONS` in `src/game/regions.js`); `tools/bake-diff.cjs`
+guards Anaximenes byte-identity after every worldgen touch.
 
 - **ANAXIMENES** — the original campaign (5 missions → ending **COUNTING** + free
   survey), worldgen provably byte-identical to pre-Phase-2 (`tools/bake-diff.cjs`),
