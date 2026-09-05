@@ -735,7 +735,7 @@ async function findRelaySites() {
     `return !document.getElementById('pause').classList.contains('hidden') ? true : null;`, 10000);
   await js(`document.getElementById('btnAbort').click(); return true;`);
   await poll('menu visible with region cards',
-    `const w = document.getElementById('regionCards'); return w && w.children.length === 2 ? true : null;`, 15000);
+    `const w = document.getElementById('regionCards'); return w && w.querySelector('#region-anaximenes') && w.querySelector('#region-longshadow') ? true : null;`, 15000);
   await shot('17_menu_regions');
 
   // G22 — both region cards present, each with a status line from its save
@@ -862,7 +862,7 @@ async function findRelaySites() {
       `return !document.getElementById('pause').classList.contains('hidden') ? true : null;`, 10000);
     await js(`document.getElementById('btnAbort').click(); return true;`);
     await poll('menu visible with region cards (again)',
-      `const w = document.getElementById('regionCards'); return w && w.children.length === 2 ? true : null;`, 15000);
+      `const w = document.getElementById('regionCards'); return w && w.querySelector('#region-anaximenes') && w.querySelector('#region-longshadow') ? true : null;`, 15000);
     await js(`document.getElementById('region-anaximenes').click(); return true;`);
     await poll('Anaximenes bake + swap done (menu, region swapped back)',
       `const F = window.FARSIDE;

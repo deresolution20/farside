@@ -125,3 +125,60 @@ save round-trip) with evidence screenshots.
 
 ---
 _Result / notes:_
+- **P_CHOS tuning** (vs §3.8 initials; measured in-page: 13×13 @ 2.5 m pad grid, 60 m
+  approach annuli, full-bake rim sweep — full numbers on the passing run):
+  - bowl 20/**250**/450 (floorR 110→250: spawn r≈276, both posts r≈234/244 and the rise
+    all sit on the broad plain; wall a gentle 250→450 ramp, Anax precedent).
+  - rim r500 w80 **amp 20** (initial 40): crest within **+20.7 m over local base**
+    (r440, same az) at every azimuth (target ≤45; p50 10.6 / p90 15.2). Crest vs basin
+    centre h(0,0) is 44.6 m (bowl-ramp reference artifact — noted; the AC compares
+    local base). Rim arithmetic: 432 ≤ 500−40−20 = 440; 500+80 = 580 < 600.
+  - massif (RISE) r **280** (initial 230), ridgeAmp 2: crest **+14.9 m** over local
+    floor at (−18,−9) (target +10…+18); dome (4 m grid, r≤100) p50 3.25° / p90 5.97° /
+    p99 9.62°. The single >10° point (11.75° at (56,12)) is the shared base fbm
+    (bake.js:80 — not per-world tunable): massif-off mirror reads 10.22° there,
+    Anaximenes control terrain 30.76°. R-TUNE: recorded, not chased.
+  - crater tiers 0.30/0.30/0.42: 323 craters inside playableR = 37 % of Anaximenes
+    (sparse, AC2f vs existing Anax evidence); keepClean gains a 250 m rise + 170 m
+    edge apron. Approaches: postA 12.3° / postB 11.9° / rise 11.1° / edge 17.1°
+    (all ≤ ~20°).
+  - **`edge` re-seated** (−330,−250)→(−190,−250) (coords may move per constraints):
+    571.7 m straight drive from spawn, max 11.9° along the line, no wall between
+    (`chosing_03_longdrive`).
+  - spawn pad: max Δ 0.55 m over 30 m, max slope 11.2°, no pit > 0.4 m within 12 m.
+- Lore contract held: `lore.js` diff is **+`frost` +`ring` only** (Moon keys
+  byte-identical); campaign objectives are the Phase-1 DSL verbatim
+  (event/distance/count + `unlocks`/`unlock`/`special`/`hint`); identity sweep
+  (`REGOLITH|Anaxagoras|Beacon-9|MU-7|CASSIOPEIA|winchxyz` over src/) zero hits.
+- **Full-campaign driver run (throwaway, NOT committed): CHOS5 VERIFY PASS (61/61)**
+  from a clean profile, 41 min total; log `/tmp/opencode/chos5-rerun.log` (transient).
+  Per-mission: L01 40 s / L02 282 s / L03 493 s / L04 1534 s (the long drive, two
+  power shuttles) / L05+ending 110 s. The 2.2 m `ring` extracted with bay
+  `[drum:rare]` + `payloadTaken=true` (not a blind core); save blob
+  `farside.ganymede.v1`: `missionId null`, all 6 codex (2 start + 4 earned), ring
+  `["0,0",1]`, card status "SURVEY COMPLETE — FREE SURVEY"; reload → RESUME restores
+  free survey on CHOS. Zero page JS errors (both page loads). Two-in-page-bakes of
+  P_CHOS strictly equal (1000 samples) and two-`Game` anomaly fields identical —
+  in the same run (task 7 promotes the bake check to G38).
+- Evidence (passing run, `spec/evidence/phase-3/`): `chosing_00_l01_card`,
+  `01_menu`, `02_plain_overview`, `03_longdrive`, `04_far_sun`, `05_jove`,
+  `06_postA_prompt`, `07_postB_prompt`, `08_ring_drill`, `09_edge`, `10_ending`,
+  `11_resumed`. The starfield comparison pair (`05a_stars_chos` / `05b_stars_anax`)
+  comes from the tuning probe, same world data (starfield is a pure function of
+  `starSeed` — deterministic). The far-sun shot used the driver's degraded fallback
+  candidate (all three LOS candidates occluded at that instant) — still a small low
+  disc on the horizon, the world's signature.
+- **`tools/gate.cjs` addendum (outside the allowlist; forced by this task's own
+  change):** two menu polls assumed the Phase-2 two-card picker
+  (`children.length === 2`); with CHOS the third region, three cards render and the
+  poll could never pass. Both now poll for the specific card ids
+  (`#region-anaximenes`, `#region-longshadow`). No other gate code is card-count
+  dependent (G22 loops the two Moon ids; G29–G40 land in task 7).
+- One earlier driver run (stderr not captured) died during L03's postB leg (hold-E
+  prompt poll after a steering-budget re-seat). Not reproduced: the re-run passed
+  the same leg at 3 m, no re-seat. No game-side change — driver flake, noted.
+- `node --check` green (regions.js, lore.js, gate.cjs); `node tools/bake-diff.cjs`
+  PASS (Anaximenes byte-identity intact — Moon records in `regions.js` are
+  byte-identical to pre-task, diff shows additions only); **GATE PASS (28/28), exit 0**
+  from a clean profile after the change (log `/tmp/opencode/gate-task5.log`,
+  transient) — the two Moon campaigns/round-trips and LS bake determinism unchanged.

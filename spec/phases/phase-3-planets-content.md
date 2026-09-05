@@ -613,11 +613,11 @@ Dependency order; full verification gate (syntax + bake-diff + browser gate) aft
 
 | # | Task | difficulty | Blocked by | Status |
 |---|------|-----------|------------|--------|
-| 1 | Sun-cycle params + gravity wiring: `sunAltitude(az, S)` + `App.sunRate` (main.js), `Rover` `g` opts (rover.js), `Dust` `g` opts (dust.js), `buildWorld` pass-through; Moon defaults bit-exact; gate 28/28 unchanged | easy | – | todo |
-| 2 | Sky regional: `Sky(…, cfg)` (earth path verbatim under `SKY_MOON`), `makeJoveTextures`, companion dots, sun-angle/scale/star-seed params, ENV IBL per cfg, Sky into `buildWorld` + `selectRegion` teardown, Game-ctx sky, boot-site rewire | hard | 1 | todo |
-| 3 | Ground albedo + dust palette: `makeBodyAlbedo(N, A)` + `A_MOON` wrapper (moon output pixel-identical, frozen-check), per-region `App.albTex` cache in `buildWorld`, `uBaseCol` uniform (declared in `buildMaterial` literal), `Dust` colour opts | hard | 2 | todo |
-| 4 | Menu four-card layout: `#regionCards` CSS reflow (2×2 desktop / 1-col narrow), statuses render for all four from their saves | easy | 3 | todo |
-| 5 | THE CHOS PLAIN world data: `P_CHOS` tuned to targets, landmarks/props/content/anoms/sky/sun/g/albedo/dust fields, `frost`+`ring` SAMPLES (lore.js additive), codex ×6, campaign L01–L05 + THE ARRIVAL, saveKey; full-campaign driver run + evidence | hard | 4 | todo |
+| 1 | Sun-cycle params + gravity wiring: `sunAltitude(az, S)` + `App.sunRate` (main.js), `Rover` `g` opts (rover.js), `Dust` `g` opts (dust.js), `buildWorld` pass-through; Moon defaults bit-exact; gate 28/28 unchanged | easy | – | done (09-04, `5d31768`) |
+| 2 | Sky regional: `Sky(…, cfg)` (earth path verbatim under `SKY_MOON`), `makeJoveTextures`, companion dots, sun-angle/scale/star-seed params, ENV IBL per cfg, Sky into `buildWorld` + `selectRegion` teardown, Game-ctx sky, boot-site rewire | hard | 1 | done (09-04, `2b62a3a` + fix `7129a67`) |
+| 3 | Ground albedo + dust palette: `makeBodyAlbedo(N, A)` + `A_MOON` wrapper (moon output pixel-identical, frozen-check), per-region `App.albTex` cache in `buildWorld`, `uBaseCol` uniform (declared in `buildMaterial` literal), `Dust` colour opts | hard | 2 | done (09-04, `5f1611a`) |
+| 4 | Menu four-card layout: `#regionCards` CSS reflow (2×2 desktop / 1-col narrow), statuses render for all four from their saves | easy | 3 | done (09-04, `6415028`) |
+| 5 | THE CHOS PLAIN world data: `P_CHOS` tuned to targets, landmarks/props/content/anoms/sky/sun/g/albedo/dust fields, `frost`+`ring` SAMPLES (lore.js additive), codex ×6, campaign L01–L05 + THE ARRIVAL, saveKey; full-campaign driver run + evidence | hard | 4 | done (09-05, driver 61/61 + gate 28/28) |
 | 6 | CONAMARA world data + `buildBreakout` prop builder (props.js + wiring): `P_CONAMARA` tuned, landmarks/props/anoms (lattice + breakouts)/fields, `flash`+`shard`+`tap` SAMPLES, codex ×6, campaign L01–L05 + THE EVENT, saveKey; full-campaign driver run + evidence | hard | 5 | todo |
 | 7 | Gate G29–G40 (append-only), evidence to `spec/evidence/phase-3/`, Product Spec §7 row 3 + changelog, ARCHITECTURE.md sync (§3.11), HANDOFF rewrite for the next session | gate | 6 | todo |
 

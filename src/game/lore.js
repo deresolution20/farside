@@ -143,7 +143,11 @@ export const SAMPLES = {
   meteoritic: { name: 'METEORITIC IRON', rare: true, value: 4, desc: 'Kamacite fragment. Arrived at eighteen kilometres per second.' },
   pipe: { name: 'HOLLOW PIPE', rare: true, value: 6, desc: 'Hollow fulgurite of local glass. Interior wall: unweathered. Lined.', unlock: 'voids' },
   lining: { name: 'THE LINE', rare: true, value: 8, desc: 'Micron-thick phase from a pipe interior. No measurable damping at 110 K. It rings.', unlock: 'function' },
-  drum: { name: 'DRUMHEAD CORE', rare: true, value: 12, desc: 'Still warm. Still winding.', unlock: 'drum' }
+  drum: { name: 'DRUMHEAD CORE', rare: true, value: 12, desc: 'Still warm. Still winding.', unlock: 'drum' },
+  frost: { name: 'PALE FROST', rare: false, value: 1,
+    desc: 'Ice frost in a pale highland soil. The plain is older than its cold.' },
+  ring: { name: 'RESONANT LINING FIELD', rare: true, value: 8,
+    desc: 'A 400-metre field of lining as floor. No pipes. It rings under every wheel that crosses it.', unlock: 'gm-ring' }
 };
 
 /* ---------------- missions ----------------
