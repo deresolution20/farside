@@ -483,4 +483,241 @@ const CHOS = {
   }
 };
 
-export const REGIONS = [ANAXIMENES, LONGSHADOW, CHOS];
+/* ------------------------------------------------------------
+    CONAMARA — terrain parameter bundle (phase 3, task 6)
+    Tuned against the §3.9 targets; measured evidence (full-bake node
+    mirror of the in-page sampler, e=0.9 slope) is in the task-06
+    result notes.
+    - bowl 18/330/470 (initial 160/460): the flat dark floor extends to
+      r 330 so all four landmark 60 m approach annuli (home/spawn
+      re-seated to r ≈ 266/256 from (240,220)/(232,228)) stay off the
+      wall ramp — the first seat put them at ~26° on the ramp.
+    - rim r 500 / w 90 / amp 58 (initial): crest within +50.5 m over the
+      local base (r440, same az) at every azimuth (target ≤70; p50 26.7
+      / p90 36.7) — a low eroded shoulder, never a wall. Constraints:
+      432 ≤ 500 − 45 − 20 = 435; 500 + 90 = 590 < 600.
+    - crater tiers 0.97/0.97/0.97 @ cells 96/28/10 (deep 0.17/0.21/0.22,
+      1.4–1.5× Anax depths): 3682 craters inside playableR = 1.30×
+      Anaximenes (2846) and 11.4× CHOS (323) — dense + pocked. The
+      spec's 1.4–1.5× intent is bounded slightly below by the AC's four
+      130–150 m keepClean aprons (the highest allowed density); the
+      fresh-flash albedo speckle carries the "fresh impact" read.
+    - pads: spawn d30 0.52 / slope 9.9° / pit 0.32; field 0.53 / 10.7 /
+      0.14; postB 0.58 / 8.9 / 0.26; hub 0.64 / 9.5 / 0.30 (all inside
+      AC ≤2 m / ~14° / ≤1 m).
+    - approaches ≤ 60 m: home 11.4° / field 10.7° / postB 10.5° /
+      hub 14.8° (AC ≤ ~20°).
+    - night drive hub→field: 283 m straight, max 9.4° — inside any
+      steering budget (AC night-drive check).
+    ------------------------------------------------------------ */
+export const P_CONAMARA = {
+  bowl:    { depth: 18, floorR: 330, wallR: 470 },
+  rim:     { r: 500, w: 90, amp: 58,
+             breachBase: 0.30, breachAmp: 1.0, breachSeed: 101,
+             ridgeScale: 0.0058, ridgeSeed: 41,
+             terraceAmp: 4, terraceFreq: 0.10, terraceSeed: 31 },
+  fall:    { amp: 62 },
+  farRidge:{ amp: 170, bias: 0.30, seed: 13, scale: 0.00212 },
+  massif:  { on: false },
+  rille:   { on: false },
+  craters: [
+    [ 96, 28, 56, 0.97, 0.17, 11],
+    [ 28, 10, 26, 0.97, 0.21, 29],
+    [ 10, 2.8, 8, 0.97, 0.22, 53]
+  ],
+  keepClean: [[196, 180, 130], [0, 0, 150], [-230, 150, 145], [210, -190, 145]]
+};
+
+/* ------------------------------------------------------------
+    CONAMARA — world data (phase 3, task 6): the second foreign
+    world — the breakout field leads. The glass comes up through a
+    four-billion-year-old pocked dark floor under a dim star-like
+    sun that the first real night in the game; the shard's
+    dielectric matches Anaximenes' pipe glass to four decimals.
+    ------------------------------------------------------------ */
+const CALL_CODEX = [
+  {
+    id: 'call-brief', tag: 'DOSSIER', title: 'SITE CONAMARA', meta: 'MERIDIAN AUTHORITY · CLEARANCE COBALT',
+    start: true,
+    body: [
+      `The site predates the manifest by a decade, and the file is two paragraphs long. The first is the survey order. The second is: the floor of Conamara is the oldest ground the Authority owns. It was catalogued before it was surveyed. It is not there to be understood.`,
+      `You are the operator of K-9 "KESTREL". The floor is a dark, ancient pockmark of fresh and ancient impact — four billion years without wind, without erasure. The newest things on it are glass pipes coming up out of the ground in clusters.`,
+      `Your first sweep shows what is under the clusters: the same lattice as Anaximenes. Under the whole dark floor.`
+    ]
+  },
+  {
+    id: 'call-memo', tag: 'AUTHORITY', title: 'SURVEY DIRECTIVE 4-F', meta: 'PRELIMINARY · RECOVERED FROM POST CACHE',
+    start: true,
+    body: [
+      `The oldest directive in the family. Set the array. Listen. Do not dig.`,
+      `The floor is a recorder, not a resource — a rule never rescinded, and the only one of the family that arrived with no signature attached.`,
+      `If the returns suggest structure, increase the sampling cadence and await instruction. No instruction has ever come back for this site. That is the first thing you will want to ask.`
+    ]
+  },
+  {
+    id: 'call-field', tag: 'FIELD NOTE', title: 'THE BREAKOUTS', meta: 'EXTRACTED SHARD · 0.9 m SUBSURFACE · THE FIELD',
+    body: [
+      `A shard out of the field. The dielectric constant matches the Anaximenes pipe glass to four decimals. Same glass. Two systems.`,
+      `The pipes did not stop at the floor. They came up through it, in clusters, at the centres of the freshest craters — the lattice runs deeper than the crater it sits in. Older than the crater.`,
+      `The newest things on the oldest ground the Authority owns are the ones that should not be there.`
+    ]
+  },
+  {
+    id: 'call-postb', tag: 'STATION LOG', title: 'CONAMARA POST B · SOL 612 · INCOMPLETE', meta: 'LOCAL STORE · RECOVERED FROM POST B · INCOMPLETE',
+    body: [
+      `The count resumed at T+0.0 of a descent clearing the rim — there is no descent log for this site. There is no descent log for any of them. I am logging the absence.`,
+      `The geophone line was cut between this post and the hub. Clean cut, both ends, done with the same tool within a shift of each other. The last thing the line carried before it went was the count starting.`,
+      `The sun is going down and the rim has not cleared the light yet. I am logging the light.`
+    ]
+  },
+  {
+    id: 'call-hub', tag: 'FIELD NOTE', title: 'THE MASTER RECORD', meta: 'ARRAY HUB · CONSOLE STORE',
+    body: [
+      `The master record is a count, timestamped, unbroken since the burst. Every entry carries its own clock, and the resume stamps line up with touchdowns — not with transmissions.`,
+      `We never transmitted to this floor.`,
+      `The charge meter is a second sun you have to budget. I am logging the dark.`
+    ]
+  },
+  {
+    id: 'call-event', tag: 'ENDING', title: 'THE EVENT', meta: 'FINAL ENTRY · UPLINK LOG',
+    body: [
+      `The uplink closed forty seconds ago. Every record you have brought back from this system starts at a touchdown — and this one starts at yours: T+0.0, to the tenth of a second.`,
+      `It was never a signal, and it is not counting down. A count is a promise: somebody set the counter, and somebody is waiting for it to finish.`,
+      `You are not the surveyor. You are the event.`
+    ]
+  }
+];
+
+const CALL_MISSIONS = [
+  {
+    id: 'call-dark', tag: 'MISSION 01', name: 'THE DARK FLOOR',
+    brief: `The sun is a star here, and it rises. Your first sweep came back full: every square metre of the floor is structure — coherent, hexagonal, older than the craters around it. The newest things on this floor are breaking through it.`,
+    objectives: [
+      { id: 'deploy', type: 'event', on: 'array-deployed', text: 'Deploy the solar array', hint: 'press T' },
+      { id: 'drive', type: 'distance', ref: 'home', op: '>', v: 120, text: 'Drive 120 m from the sled' },
+      { id: 'scan', type: 'event', on: 'scan-done', text: 'Run one ground-penetrating radar sweep', hint: 'press G' }
+    ]
+  },
+  {
+    id: 'call-field', tag: 'MISSION 02', name: 'THE FIELD',
+    brief: `At the centre of the floor the glass comes up in clusters — pipes that did not stop at the floor. The sweep shows the lattice continuous beneath the whole dark floor. Drive in, dig the through-cores, and take one whole shard out.`,
+    objectives: [
+      { id: 'reach', type: 'distance', ref: 'field', op: '<', v: 26, text: 'Reach the breakout field' },
+      { id: 'find3', type: 'count', on: 'sample', count: 3, text: 'Excavate 3 subsurface returns' },
+      { id: 'shard', type: 'event', on: 'extract', special: 'shard', unlock: 'call-field', text: 'Extract the shard from the field (0.9 m)', hint: 'drill the marked shard' }
+    ]
+  },
+  {
+    id: 'call-tap', tag: 'MISSION 03', name: 'THE DEAD TAP',
+    brief: `The post's geophone line was cut between it and the hub, clean cut at both ends. Recover the record; take the tap itself. The sun is going down and the rim has not cleared the light yet.`,
+    objectives: [
+      { id: 'reach', type: 'distance', ref: 'postB', op: '<', v: 26, text: 'Reach post B' },
+      { id: 'recover', type: 'event', on: 'station-interact', special: 'postB', unlocks: 'postB', unlock: 'call-postb', text: 'Recover the post record', hint: 'hold E at the post' },
+      { id: 'tap', type: 'event', on: 'extract', special: 'tap', text: 'Extract the listening tap (2.6 m)', hint: 'drill the marked lead' }
+    ]
+  },
+  {
+    id: 'call-dusk', tag: 'MISSION 04', name: 'DUSK',
+    brief: `The master record is in the hub, buried under its own dead feed. Recover it. Then the last objective of the day: drive to the field in the dark — the first night in the game. The charge meter is a second sun you have to budget.`,
+    objectives: [
+      { id: 'reach', type: 'distance', ref: 'hub', op: '<', v: 30, text: 'Reach the array hub' },
+      { id: 'record', type: 'event', on: 'station-interact', special: 'hub', unlocks: 'hub', unlock: 'call-hub', text: 'Recover the master record', hint: 'hold E at the hub' },
+      { id: 'night', type: 'distance', ref: 'field', op: '<', v: 26, text: 'Reach the field in the dark' }
+    ]
+  },
+  {
+    id: 'call-event', tag: 'MISSION 05', name: 'THE EVENT',
+    brief: `The record's timestamp is going to be the hardest number you have ever seen. Bring the shard home and transmit before the uplink closes.`,
+    objectives: [
+      { id: 'home', type: 'distance', ref: 'home', op: '<', v: 26, text: 'Return to the sled' },
+      { id: 'transmit', type: 'event', on: 'transmit', text: 'Transmit the sample' }
+    ]
+  }
+];
+
+const CONAMARA = {
+  id: 'callisto',
+  name: 'CONAMARA',
+  subtitle: 'CALLISTO · DARK FLOOR',
+  tagline: 'The Breakout Field',
+  brief: `The most heavily cratered ground in the system — four billion years of impacts, no wind, no erasure — and the newest things on it are glass pipes coming up out of the floor in clusters.<br><br>
+    The sweep shows what is under the clusters: the same lattice as Anaximenes, <em>under the whole dark floor</em>.<br><br>
+    And the sun here actually sets.`,
+  saveKey: 'farside.callisto.v1',
+  // Sun curve: base 0.10 + sin(az·0.5 − 0.4)·0.16 gives −3.4°…14.9° —
+  // the game's first real night. Tuned (task 6) to the MEASURED playthrough
+  // spread: field arrival was 864 s (fast, p6c), 1891 s (p6d — L03 rode
+  // through the night at a flat pack), and ~2350 s (run-7, battery
+  // pathologies). rate 0.00163 + az0 7.62 put the night window at
+  // ≈499…2697 s (period 7709 s): L01–L02 in dim fading light, sunset
+  // mid-L03 ("into night"), and EVERY measured campaign — hub→field drive
+  // and L05 transmit — demonstrably dark, with >= 300 s margins on both
+  // sides of the fastest/slowest runs.
+  sunAz0: 7.62,
+  // Home/spawn re-seated inward (task-06 tuning) so their 60 m approach
+  // annuli stay on the flat bowl floor (floorR 330) instead of spilling
+  // onto the wall ramp (~26°).
+  spawn: { x: 188, z: 174, heading: 2.6 },
+  terrain: P_CONAMARA,
+  playableR: 432,
+  landmarks: {
+    home:  { x: 196,  z: 180,  label: 'SLED' },
+    field: { x: 0,    z: 0,    label: 'FIELD' },
+    postB: { x: -230, z: 150,  label: 'POST B' },
+    hub:   { x: 210,  z: -190, label: 'HUB' }
+  },
+  content: [
+    { at: 'postB', radius: 12, unlocks: 'postB', key: 'postB', prompt: 'HOLD <kbd>E</kbd> — RECOVER POST RECORD' },
+    { at: 'hub',   radius: 14, unlocks: 'hub',   key: 'hub',   prompt: 'HOLD <kbd>E</kbd> — RECOVER MASTER RECORD' }
+  ],
+  props: {
+    station: 'none',
+    pylons: [[120, 120], [-100, -80], [60, 260]],
+    pipes: [],
+    bigPipe: null,
+    posts: [[-230, 150]],
+    hub: [210, -190],
+    // the central cluster re-seated (0,0) -> (−14,10) (task 6, run p6b): at
+    // (0,0) its 3.45 m push-out band swallowed the shard's drill ring —
+    // shard is AC-pinned at field+(2,3), 3.6 m of (0,0), and the rover could
+    // not settle there (props.resolve pushed it every frame). (−14,10) keeps
+    // it the field-centre cluster with 8+ m of clearance to the shard zone.
+    breakouts: [[-14, 10, 1.6], [70, 50, 1.2], [-80, -40, 1.0]]
+  },
+  anoms: {
+    seed: 0x6B4C1,
+    pipes: { anchor: 'field', rings: 4 },
+    scatter: { count: 34, kinds: [...SCATTER_KINDS, 'flash'], rMin: 40 },
+    specials: [
+      { at: 'field', dx: 2,  dz: 3,  type: 'shard', depth: 0.9, special: 'shard', deep: true },
+      { at: 'postB', dx: 9,  dz: -6, type: 'tap',   depth: 2.6, special: 'tap',   deep: true }
+    ]
+  },
+  transmit: { sample: 'shard', unlocks: ['call-event'] },
+  g: 1.236,
+  sun: { rate: 0.00163, base: 0.10, amp: 0.16, freq: 0.5, phase: -0.4 },
+  sky: {
+    planet: 'jove',
+    jove: { az: 2.6, alt: 0.34, angular: 0.077,
+            companions: [
+              [2.50, 0.30, 0.0032, [0.85, 0.78, 0.52]],  // Io — sulphur, west of the giant
+              [2.70, 0.39, 0.0028, [0.92, 0.90, 0.86]],  // Europa — pale, higher
+              [2.62, 0.28, 0.0036, [0.72, 0.66, 0.60]]   // Ganymede — grey-brown, lower
+            ] },
+    sunAngular: 0.0012,
+    sunScale: 0.42,
+    starSeed: 0x53DE9,
+    ground: [0.10, 0.078, 0.06]
+  },
+  albedo: { seedMare: 127, seedFine: 139, high: 128, low: 74, fineLo: 0.80, fineHi: 0.44, tone: [1.06, 0.92, 0.82], flash: { seed: 97, amp: 70, t: 0.70 } },
+  dust: { albedo: [0.10, 0.078, 0.06], glow: [0.62, 0.5, 0.3] },
+  missions: CALL_MISSIONS,
+  codex: CALL_CODEX,
+  ending: {
+    tag: 'CONAMARA', name: 'THE EVENT',
+    brief: `The uplink closed forty seconds ago. Every record you have brought back from this system starts at a touchdown — and this one starts at yours: T+0.0, to the tenth of a second.\n\nIt was never a signal, and it is not counting down. A count is a promise: somebody set the counter, and somebody is waiting for it to finish.\n\nYou are not the surveyor. You are the event.`,
+    objectives: [{ id: '_', text: 'Free survey unlocked — the dark floor is yours' }]
+  }
+};
+
+export const REGIONS = [ANAXIMENES, LONGSHADOW, CHOS, CONAMARA];

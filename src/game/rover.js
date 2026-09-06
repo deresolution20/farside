@@ -594,7 +594,10 @@ export class Rover {
      physics
      ============================================================ */
   step(dt, ctl, terrain) {
-    const SUB = 6, h = Math.min(dt, 0.05) / SUB;
+    // h floored at 1e-3/6: a degenerate frame (rAF timestamp tie -> dt 0) must
+    // not divide the suspension rate by zero — (comp - w.comp)/0 is NaN on a
+    // settled chassis and corrupts the rover's position (task-6 p6b finding).
+    const SUB = 6, h = Math.max(Math.min(dt, 0.05), 1e-3) / SUB;
     for (let s = 0; s < SUB; s++) this._substep(h, ctl, terrain);
     this.sync();
   }

@@ -179,8 +179,9 @@ export function makeBodyAlbedo(N = 512, A = A_MOON) {
     const mare = sstep(0.42, 0.58, fbm(x, y, 4, 2.07, 0.55, A.seedMare));
     const fine = fbm(x * 5.3 + 2, y * 5.3 - 1, 3, 2.1, 0.5, A.seedFine);
     let v = lerp(A.high, A.low, mare) * (A.fineLo + A.fineHi * fine);
-    // Jovian impact-flash speckle (the Moon's A.flash is null -> adds nothing)
-    if (A.flash) v += Math.max(0, fbm(x * 17, y * 17, 2, 2.3, 0.5, A.flash.seed) - 0.60) * A.flash.amp;
+    // Jovian impact-flash speckle (the Moon's A.flash is null -> adds nothing;
+    // the 0.60 threshold is the historical shared value, overridable per body)
+    if (A.flash) v += Math.max(0, fbm(x * 17, y * 17, 2, 2.3, 0.5, A.flash.seed) - (A.flash.t ?? 0.60)) * A.flash.amp;
     const o = (j * N + i) * 4;
     img.data[o] = v * tone[0]; img.data[o + 1] = v * tone[1]; img.data[o + 2] = v * tone[2]; img.data[o + 3] = 255;
   }

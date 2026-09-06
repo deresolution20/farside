@@ -47,6 +47,17 @@ remains parked (Phase 3 keeps all four at 432).
 - Per-region audio, save compression, extra save migrations.
 - A general `dispose()` API for world teardown (Phase 3 extended `Sky.dispose()`
   as the one targeted case; revisit if a swap ever leaks GPU memory).
+- **Transmit of an already-stowed payload** (found task 6, CONAMARA L05): the
+  final-mission `transmit` event fires only on a *fresh* bay drain at the sled, and
+  a drained bay stays drained — if the transmit sample was extracted early in the
+  campaign and the player recharges at the sled in between (the Conamara power
+  strategy), the last home arrival carries an empty bay and the campaign
+  soft-locks ("bring the shard home" with a bay that can only be refilled by
+  drilling on the way). Same latent shape for Long Shadow if the player recharges
+  after the L04 hub-core extract. Phase 3 ships no engine change (the drivers
+  drill a fresh sample before the final drive, as a player would); a fix — e.g.
+  the sled re-transmits the stowed payload when the final mission is active — is
+  a gameplay.js work item, not a data tweak.
 - **Phase 3 guard** (Product Spec §8, active through the phase): if "planet" starts
   requiring a new code path, split the phase — data bundle in, code path out to
   here. Outcome logged in the Product Spec changelog at close.

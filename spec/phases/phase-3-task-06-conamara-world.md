@@ -143,3 +143,104 @@ round-trip, with evidence screenshots.
 
 ---
 _Result / notes:_
+- **`P_CONAMARA` tuning** (vs §3.9 initials; in-page samplers as task 5): bowl
+  18/**330**/470 (floorR widened so the field apron is flat — max Δ 1.4 m over 30 m,
+  pit ≤ 0.8 m within 12 m of every landmark); rim crest ≤ +68 m over local floor at
+  every azimuth (target ≤ +70), approaches ≤ 18° within 60 m of all landmarks;
+  keepClean covers spawn/field/postB/hub. Crater density 2846 (11.4× CHOS) —
+  dense + poked, the 4-Gyr read.
+- **`home`/`spawn` re-seated inward** (196,180)/(188,174): their 60 m approach
+  annuli stayed on the flat floor (floorR 330) instead of spilling onto the wall
+  ramp (~26°).
+- **Central breakout cluster (0,0)→(−14,10)** (s 1.6): at (0,0) its 3.45 m push-out
+  band swallowed the AC-pinned shard drill ring (shard = field+(2,3), 3.6 m from
+  (0,0)) and the rover could never settle there. (−14,10) keeps it the
+  field-centre cluster with 8+ m clearance. Cluster positions are free data; the
+  shard/tap specials stay contract-pinned.
+- **Sun curve — final `rate 0.00163`, `sunAz0 7.62`** (initials 0.0025/6.18; base
+  0.10/amp 0.16 unchanged → −3.4°…14.9°, the §3.2 acceptance band). Night window
+  **≈500 s … ≈2697 s** (period 7709 s). Tuning history, each driven by a measured
+  playthrough: initials → [901, 2335]; run-7 field arrival ~2350 s (15 s past that
+  sunrise) → az0 5.5/rate 0.0022 → [1334, 2961]; the fast power-managed run
+  (p6c) reached the field at 864 s (sun up) → rate 0.004/az0 6.43 → [500, 1397];
+  the p6d run (flat pack crawled the postB→sled return, 918 s) arrived at 1891 s
+  → final [500, 2696] covers **every** measured hub→field arrival (864 / 966 /
+  1891 / ~2350 s) with ≥ 300 s of margin on both sides, L01–L02 (0–~300 s) still
+  in dim light (alt +5.8° at t=0), sunset mid-L03 ("into night"). PAC check (the
+  71/71 run): hub 785 s … campaign end 1053 s inside the window, alt −0.044…−0.026;
+  live night drive min `sky.sunDir.y` −0.0394 over 366 samples, SOL PHASE
+  negative, Jove + companion dots up.
+- **Lore contract held:** `lore.js` diff is **+`flash` +`shard` +`tap` only**
+  (additive keys, exact §3.9 text); campaign objectives are the Phase-1 DSL
+  verbatim (distance/event + `unlocks`/`unlock`/`special`/`hint` — the L04
+  `night` objective is a plain `< 26 m` distance; the darkness is pacing, per the
+  §3.9 note); identity sweep (`REGOLITH|Anaxagoras|Beacon-9|MU-7|CASSIOPEIA|winchxyz`
+  over src/) zero hits. The three prior region records are **byte-identical**
+  (`git diff src/game/regions.js` is +238/−1, the one deletion being the `REGIONS`
+  export line gaining `, CONAMARA`).
+- **`buildBreakout(x,z,s)`** (props.js, +93 lines): 3–5 bezier glass tubes from
+  `buildPipeNode`'s glass material, rubble fan (`buildBoulders` pattern), bright
+  flash disc, emissive tip caps flickering in `props.update`'s idle loop, one
+  convex collider per cluster (`props.resolve` kind `'breakout'`). Proven live in
+  the 71/71 run: shove-to-centre → pushed out to the 3.45 m band (d 3.45–4.45,
+  extra push from rubble colliders), no NaNs; nose-on 8.4 m/s, 2.5 s of real
+  frames — closest approach 4.38 m, no tunneling; scales 0.8–1.8 all cross the
+  flash disc and reach ≥ 1.2 s above ground; the two scale-probe clusters are
+  removed again before the campaign (world keeps exactly the 3 region clusters);
+  Chos/Moon worlds never call it (no `breakouts` key → `group` child count
+  unchanged across a CHOS swap).
+- **Anomaly field deterministic:** two in-page builds byte-identical; 36 lattice
+  pipes (all `deep: true`, field-centred rings — the recorded ring counts),
+  scatter 69 placed over 7 kinds incl. `flash` (config 34; rest slope-rejected in
+  the mirror pass); `shard` field+(2,3) 0.9 m / `tap` postB+(9,−6) 2.6 m both
+  extracted by real drills in the campaign (shard = `shard:rare` in the bay, tap
+  = `tap:rare`).
+- **Full-campaign driver run (throwaway driver, NOT committed): CONAMARA6 VERIFY
+  PASS (71/71)** from the profile that already held the CHOS free-survey blob;
+  log `/tmp/opencode/conamara6-p6g.log` (transient), 1176 s total. Per-mission
+  (this run): L01 62 s / L02 451 s / L03 262 s / L04 191 s / L05+ending 187 s —
+  field arrival ≈ 966 s, deep in the dark window. Ending card THE EVENT, "You are
+  not the surveyor. You are the event."; free-survey blob `farside.callisto.v1`
+  (`missionId null`, 6 codex: 2 start + 4 earned); reload → RESUME SURVEY on
+  CONAMARA; **`farside.ganymede.v1` byte-identical to the CHOS baseline after the
+  whole campaign** (cross-region integrity, the G34 preview).
+- Evidence (the passing run, `spec/evidence/phase-3/`): `conamara_01_menu`,
+  `02_dark_floor`, `03_radar_dense`, `04_field`, `04b_shard_drill`,
+  `05a_postB_prompt`, `05_tap`, `06_jove`, `07_hub`, `08_night_drive`,
+  `09_ending`, `10_resumed` (12 shots; 06/08/09 are the night-state signature —
+  Jove + companions + stars up, headlight beam, SOL PHASE negative). The CHOS
+  shots were re-taken by the task-5 driver re-run in the same session.
+- **Deviations from the file allowlist (recorded per the phase guard):**
+  1. `src/world/textures.js` — per-body flash threshold `t` (default `?? 0.60`,
+     Moon/ANAX/LS output unchanged; CONAMARA uses `t: 0.70`, `amp: 70` so the
+     flash speckle reads on the dark floor).
+  2. `src/main.js` — the one wiring line **plus one line**: the lens-ghost sun
+     streak is scaled by `rover.sunVis` (a streak cannot exist when the disc is
+     below the local horizon; `rover.sunVis` already exists, initialized 1).
+  3. `src/game/rover.js` — `step()` substep floor: `h = Math.max(Math.min(dt,
+     0.05), 1e-3)`. A degenerate `dt = 0` (rAF timestamp tie) made
+     `compVel = (comp − w.comp)/dt` → 0/0 → NaN chassis position / −1600 m/s fall
+     (observed live mid-run). Zero effect at any non-zero dt — a numeric guard,
+     not a mechanic.
+- **Driver-side hardenings** (throwaway driver only — the campaign still plays
+  with real steering/drills/recharges throughout): flat-pack safety-net at the L04
+  start (re-seat to the sled via the driver's standard `placeAt` helper when the
+  pack is < 50 % — the "turn around and recharge" decision is preserved, only a
+  dead-battery 426 m transit is compressed; not needed in the 71/71 run), an
+  arrival-aware night-drive power guard (≤ 30 m from the field → coast it in as a
+  valid "second sun" budgeting outcome; otherwise fail), `ensurePower` capped at
+  99 (the shuttle loop breaks at 99.9 and the single-snap exactly-100 check was
+  flake-prone), and a computed L01 sweep spot (a 78 m scan disc only ever catches
+  a facing lattice arc — the in-page grid search pins a spot with ≥ 3 pipes inside
+  its disc, verified before the sweep).
+- **Parked in `spec/IDEAS.md`** (found here, no engine change in Phase 3):
+  "Transmit of an already-stowed payload" — the `transmit` event fires only on a
+  fresh bay drain, so stowing the shard early + recharging at the sled before the
+  final drive soft-locks the campaign (drivers drill a fresh sample first, as a
+  player would; same latent shape for Long Shadow).
+- `node --check` green on every file; `node tools/bake-diff.cjs` PASS (Anaximenes
+  frozen parity + strict two-bake determinism); two fresh in-page bakes of
+  `P_CONAMARA` strictly equal (1000 macro samples). **GATE PASS (28/28), exit 0**
+  from a clean profile after the change; **CHOS task-5 driver re-run
+  61/61 PASS** (1793 s; L01 37 s / L02 283 s / L03 337 s / L04 844 s / L05+ending
+  274 s) — CHOS log `/tmp/opencode/chos5-p6c.log` (transient).

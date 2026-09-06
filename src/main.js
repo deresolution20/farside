@@ -238,6 +238,8 @@ function buildWorld(region, baked, tex) {
   // the long shadow listening array (absent in Anaximenes)
   (region.props.posts || []).forEach(([x, z]) => props.buildPost(x, z));
   if (region.props.hub) props.buildHub(region.props.hub[0], region.props.hub[1]);
+  // the Conamara lattice breakouts (absent everywhere else)
+  (region.props.breakouts || []).forEach(([x, z, s]) => props.buildBreakout(x, z, s));
 
   const dust = new Dust(e.scene, terrain, terrain.uniforms.uSunDir, e.quality.dust, { g: region.g, albedo: region.dust?.albedo, glow: region.dust?.glow });
   const rover = new Rover(terrain, e.scene, { g: region.g });
@@ -661,8 +663,13 @@ function tick(dt) {
     const sp = _v.copy(App.sky.sunDir).multiplyScalar(4000).add(App.engine.camera.position)
       .project(App.engine.camera);
     const front = App.sky.sunDir.dot(App.engine.camera.getWorldDirection(_v2)) > 0;
+    // A lens ghost needs light in the lens: if the terrain hides the sun from
+    // the rover, the streak cannot exist. rover.sunVis is the same occlusion
+    // the directional light fades with (computed above in stepWorld); in the
+    // menu / idle world there is no rover, so the sky decides alone.
+    const sv = App.game && App.game.rover ? App.game.rover.sunVis : 1;
     const vis = front && App.sky.sunDir.y > -0.02
-      ? clamp(1 - Math.max(Math.abs(sp.x), Math.abs(sp.y)) * 0.42, 0, 1) * clamp(App.sky.sunDir.y * 14, 0, 1)
+      ? clamp(1 - Math.max(Math.abs(sp.x), Math.abs(sp.y)) * 0.42, 0, 1) * clamp(App.sky.sunDir.y * 14, 0, 1) * sv
       : 0;
     App.engine.final.uniforms.uSunUV.value.set(sp.x * 0.5 + 0.5, sp.y * 0.5 + 0.5, vis * 0.9);
 

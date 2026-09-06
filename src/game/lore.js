@@ -147,7 +147,13 @@ export const SAMPLES = {
   frost: { name: 'PALE FROST', rare: false, value: 1,
     desc: 'Ice frost in a pale highland soil. The plain is older than its cold.' },
   ring: { name: 'RESONANT LINING FIELD', rare: true, value: 8,
-    desc: 'A 400-metre field of lining as floor. No pipes. It rings under every wheel that crosses it.', unlock: 'gm-ring' }
+    desc: 'A 400-metre field of lining as floor. No pipes. It rings under every wheel that crosses it.', unlock: 'gm-ring' },
+  flash: { name: 'IMPACT FLASH', rare: false, value: 2,
+    desc: 'Bright fresh-impact mineral on a four-billion-year-old floor. The newest thing here is also the youngest.' },
+  shard: { name: 'GLASS SHARD', rare: true, value: 8,
+    desc: 'Fulgurite torn from a breakout. Dielectric matches Anaximenes pipe glass to four decimals. Same glass. Two systems.', unlock: 'call-field' },
+  tap: { name: 'LISTENING TAP', rare: true, value: 5,
+    desc: 'A geophone with a clean-cut lead. The last thing it heard was a count starting at a touchdown.', unlock: 'call-postb' }
 };
 
 /* ---------------- missions ----------------

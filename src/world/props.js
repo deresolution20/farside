@@ -653,6 +653,94 @@ export class Props {
     return g;
   }
 
+  /* ============================================================
+     CONAMARA — breakout clusters (phase 3, task 6)
+     Lattice tubes bursting up through a crater floor: 3–5 curved
+     glass arcs (the buildPipeNode PBR glass, emissive off — the
+     world is dark, the pipes read by contrast + headlight sheen),
+     a rubble fan, and a bright fresh-impact flash patch under the
+     cluster. Faint dielectric tip glow flickers on a 2-s cycle.
+     Deterministic per cluster (coordinate-seeded RNG); `s` scales
+     the whole cluster (0.8–1.8 in the region data).
+     ============================================================ */
+  buildBreakout(x, z, s) {
+    const g = new THREE.Group();
+    const rng = makeRNG(Math.floor(x * 31 + z * 17) | 1);
+    const glass = new THREE.MeshPhysicalMaterial({
+      color: 0x1a3d4a, metalness: 0.0, roughness: 0.08,
+      transmission: 0.85, thickness: 1.4, ior: 1.52,
+      clearcoat: 1.0, clearcoatRoughness: 0.05,
+      emissive: 0x000000, envMapIntensity: 2.2, transparent: true, opacity: 0.92
+    });
+
+    // 3–5 curved tubes arcing out of the floor, tips leaning outward
+    const n = 3 + Math.floor(rng() * 3);
+    const geos = [], tips = [];
+    for (let i = 0; i < n; i++) {
+      const a = rng() * 6.2832;
+      const r0 = (0.15 + rng() * 0.55) * s;
+      const d = (1.0 + rng() * 1.2) * s;
+      const h = (1.2 + rng() * 1.6) * s;
+      const curve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(Math.cos(a) * r0, -0.3 * s, Math.sin(a) * r0),
+        new THREE.Vector3(Math.cos(a) * d * 0.45, h * 1.18, Math.sin(a) * d * 0.45),
+        new THREE.Vector3(Math.cos(a) * d, h, Math.sin(a) * d));
+      geos.push(new THREE.TubeGeometry(curve, 14, (0.09 + rng() * 0.14) * s, 7, false));
+      tips.push(new THREE.Mesh(new THREE.SphereGeometry(0.13 * s, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0x8fe3f0, transparent: true, opacity: 0.18 })));
+      tips[i].position.copy(curve.getPoint(1));
+      tips[i].material.userData.phase = rng() * 6.2832;
+      g.add(tips[i]);
+    }
+    const merged = mergeGeometries(geos, false);
+    merged.computeVertexNormals();
+    const mesh = new THREE.Mesh(merged, glass);
+    mesh.castShadow = true; g.add(mesh);
+
+    // rubble fan: deformed icosahedra, the buildBoulders geometry pattern
+    (this._breakoutRocks ||= [boulderGeo(77, 2), boulderGeo(131, 2)]);
+    for (let i = 0; i < 7; i++) {
+      const a = rng() * 6.2832, r = (0.5 + rng() * 1.7) * s;
+      const size = (0.22 + rng() * 0.5) * s;
+      const rock = new THREE.Mesh(this._breakoutRocks[i % 2], this.rockMat);
+      rock.position.set(Math.cos(a) * r, -size * 0.28, Math.sin(a) * r);
+      rock.scale.set(size * (0.8 + rng() * 0.4), size * (0.6 + rng() * 0.3), size * (0.8 + rng() * 0.4));
+      rock.rotation.set(rng() * 3, rng() * 6, rng() * 3);
+      rock.castShadow = true; rock.receiveShadow = true;
+      g.add(rock);
+      if (size > 0.35 * s)
+        this.colliders.push({ x: x + Math.cos(a) * r, z: z + Math.sin(a) * r, r: size * 0.72, kind: 'breakout' });
+    }
+
+    // the fresh impact-flash: a soft bright patch under the cluster
+    (this._flashPatchTex ||= (() => {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d');
+      const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0.00, 'rgba(230, 222, 208, 0.50)');
+      grad.addColorStop(0.55, 'rgba(230, 222, 208, 0.20)');
+      grad.addColorStop(1.00, 'rgba(230, 222, 208, 0.00)');
+      g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    })());
+    const patch = new THREE.Mesh(new THREE.CircleGeometry(2.2 * s, 28),
+      new THREE.MeshBasicMaterial({ map: this._flashPatchTex, transparent: true, depthWrite: false }));
+    patch.rotation.x = -Math.PI / 2; patch.position.y = 0.06; g.add(patch);
+
+    const y = this.terrain.heightAt(x, z);
+    g.position.set(x, y, z);
+    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    patch.castShadow = false; patch.receiveShadow = false;
+    for (const tip of tips) { tip.castShadow = false; tip.receiveShadow = false; }
+    g.userData.tips = tips;
+    this.group.add(g);
+    this.colliders.push({ x, z, r: 1.5 * s, kind: 'breakout' });
+    (this.breakouts ||= []).push(g);
+    return g;
+  }
+
   /** Remove anything the player deployed, so a restart starts clean. */
   clearDeployables() {
     if (this.relays) {
@@ -706,6 +794,11 @@ export class Props {
       const k = 0.5 + 0.5 * Math.sin(t * 0.9 + l.position.z * 0.3);
       l.userData.mat.emissiveIntensity = 0.30 + 0.55 * k;
       l.userData.glow.material.opacity = 0.035 + 0.045 * k;
+    }
+    if (this.breakouts) for (const b of this.breakouts) {
+      for (const m of b.userData.tips) {
+        m.opacity = 0.08 + 0.14 * (0.5 + 0.5 * Math.sin(t * Math.PI + m.userData.phase));
+      }
     }
     if (this.homeRing) {
       this.homeRing.material.opacity = 0.11 + 0.07 * Math.sin(t * 2.0);
