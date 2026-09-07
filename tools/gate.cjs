@@ -932,6 +932,330 @@ async function findRelaySites() {
       raw && raw.n === 1000 && raw.bad === 0, det);
   }
 
+  // ============ PHASE 3: the Jovian worlds (G29–G40) ============
+  // Appended after the full Phase-2 flow, same transport, same helpers.
+  // State on entry: ANAXIMENES menu; the Anax free-survey blob and the LS
+  // 'ls-echo' blob already exist (G1–G28 made them).
+
+  // G29 — the menu now carries four region cards, each with a status line
+  // derived from THAT region's save: the gate's clean profile has seen the
+  // Anax campaign (free survey) and the LS section (L02 saved) by now, so
+  // the two Moon cards must read COMPLETE/IN PROGRESS and the two Jovian
+  // cards must still read NO SURVEY (they get written below, G32/G36).
+  {
+    await shot('22_menu_four_cards');
+    const cards = JSON.parse(await js(`
+      const out = [];
+      for (const id of ['region-anaximenes', 'region-longshadow', 'region-ganymede', 'region-callisto']) {
+        const c = document.getElementById(id);
+        if (!c) { out.push(null); continue; }
+        const st = c.querySelector('.rc-status');
+        out.push({ id, name: c.querySelector('.rc-name').textContent.trim(), status: st ? st.textContent.trim() : '' });
+      }
+      return JSON.stringify(out);
+    `));
+    const byId = Object.fromEntries(cards.filter(Boolean).map((c) => [c.id, c]));
+    result('G29: menu shows four region cards, each with its save-derived status',
+      cards.length === 4 && cards.every((c) => c && c.status !== '') &&
+      /NO SURVEY/.test(byId['region-ganymede'].status) && /NO SURVEY/.test(byId['region-callisto'].status) &&
+      /COMPLETE/.test(byId['region-anaximenes'].status) && /IN PROGRESS/.test(byId['region-longshadow'].status),
+      cards.map((c) => (c ? c.status : c.id + ' MISSING')).join(' | '));
+  }
+
+  // G30 — select THE CHOS PLAIN: loading sheet, world swapped (fresh Sky
+  // instance in the scene), and plain-world geometry: the rise crest (a
+  // grid max over the r<=120 dome — the massif is wide rather than tall,
+  // so the crest wanders off-centre) minus the post A plain floor sits in
+  // the spec's +8…+25 m band, and the sun never clears a low crawl.
+  {
+    await js(`window.__gmSkyPre = window.FARSIDE.sky; return true;`);
+    await js(`document.getElementById('region-ganymede').click(); return true;`);
+    await poll('region loading sheet visible (Chos)',
+      `return !document.getElementById('regionload').classList.contains('hidden') ? true : null;`, 15000);
+    await poll('Chos bake + swap done (menu, region swapped)',
+      `const F = window.FARSIDE;
+       return F && F.state === 1 && F.region && F.region.id === 'ganymede'
+          && document.getElementById('regionload').classList.contains('hidden') ? true : null;`, 120000);
+    const h = JSON.parse(await js(`
+      const F = window.FARSIDE, t = F.game.terrain;
+      let crest = null;
+      for (let r = 0; r <= 120; r += 2) {
+        const n = Math.max(16, Math.round(r));
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2, x = Math.cos(a) * r, z = Math.sin(a) * r;
+          const v = t.heightAt(x, z);
+          if (v != null && (!crest || v > crest.v)) crest = { x, z, v };
+        }
+      }
+      return JSON.stringify({ crest, postA: t.heightAt(-180, 150),
+        sunY: F.sky.sunDir.y,
+        skyNew: F.sky !== window.__gmSkyPre,
+        inScene: F.engine.scene.children.includes(F.sky.group) });
+    `));
+    await shot('23_menu_chos_orbit');
+    result('G30: selected THE CHOS PLAIN -> swapped (rise-floor +8..+25 m, low never-setting sun, fresh Sky)',
+      h.crest && h.crest.v - h.postA >= 8 && h.crest.v - h.postA <= 25 &&
+        h.sunY > 0 && h.sunY < 0.12 && h.skyNew === true && h.inScene === true,
+      'crest=' + (h.crest ? h.crest.v.toFixed(1) : '?') + ' m postA=' + h.postA.toFixed(1) +
+        ' m delta=' + (h.crest.v - h.postA).toFixed(1) + ' m sunDir.y=' + h.sunY.toFixed(4) +
+        ' skyNew=' + h.skyNew + ' inScene=' + h.inScene);
+  }
+
+  // G31 — Chos L01 playable, the L01 shape (card -> T -> long drive -> G),
+  // with the dHome margin polled BEFORE the scan tap so the mutation
+  // instant captures all three objectives.
+  {
+    await js(`document.getElementById('btnPlay').click(); return true;`);
+    await waitCard('Chos mission 01 card shown');
+    await shot('24_gm_l01_card');
+    await js(`document.getElementById('cardGo').click(); return true;`);
+    await poll('Chos game state PLAY',
+      `return window.FARSIDE && window.FARSIDE.state === 2 ? true : null;`, 15000);
+    let driveNote = '';
+    await tap('KeyT');
+    await sleep(2500);
+    {
+      const s0 = await snap();
+      const note = await driveTo(s0.x + s0.fx * 170, s0.z + s0.fz * 170, 20, 240000);
+      if (String(note).includes('reseated')) driveNote = ' [reseated]';
+      await poll('Chos dHome > 122 m before the scan tap',
+        `const g = window.FARSIDE.game, p = g.rover.pos;
+         return Math.hypot(p.x - 60, p.z - 260) > 122 ? true : null;`, 30000);
+    }
+    await shot('25_gm_l01_drive');
+    await waitPower(10, 120000);
+    await tap('KeyG');
+    const s = await snap();
+    await sleep(2900);
+    const found = await js(`const g = window.FARSIDE.game;
+      return g.anoms.filter((a) => a.found && !a.taken).length;`);
+    const dHome = Math.hypot(s.x - 60, s.z - 260);
+    result('G31: Chos L01 playable (deploy, >120 m, G scan, mission complete)',
+      s.objDone.deploy === true && s.objDone.drive === true && s.objDone.scan === true && dHome > 120,
+      Math.round(dHome) + ' m' + driveNote + ' deploy=' + s.objDone.deploy +
+        ' drive=' + s.objDone.drive + ' scan=' + s.objDone.scan + ' ' + found + ' returns');
+    await poll('Chos advanced to gm-first (the 1.4 s timer)',
+      `const g = window.FARSIDE.game; return g && g.missionId === 'gm-first' ? true : null;`, 30000);
+  }
+
+  // G32 — the Jovian save slot is written now on L02 (gm-first). The
+  // 1.4 s advance timer wipes objDone, so the bookkeeping instant was
+  // already captured in G31; here the transition itself + the slot are
+  // the evidence.
+  {
+    await js(`window.FARSIDE.game.save(); return true;`);
+    const blob = await poll('farside.ganymede.v1 present on gm-first',
+      `try {
+         const d = JSON.parse(localStorage.getItem('farside.ganymede.v1'));
+         return d && d.missionId === 'gm-first' ? JSON.stringify(d) : null;
+       } catch (e) { return null; }`, 10000);
+    const d = JSON.parse(blob);
+    result('G32: farside.ganymede.v1 written with missionId gm-first',
+      d.missionId === 'gm-first', 'missionId=' + d.missionId);
+  }
+
+  // G33 — reload: the region selection persisted (farside.set), RESUME
+  // lands back in Chos L02, payload untouched
+  {
+    await send('WebDriver:Navigate', { url: URL });
+    try {
+      await poll('btnContinue visible (Chos save detected)',
+        `const b = document.getElementById('btnContinue'); return b && !b.disabled && b.offsetParent !== null ? true : null;`, 120000);
+      await js(`document.getElementById('btnContinue').click(); return true;`);
+      await poll('resumed into Chos L02 (gm-first)',
+        `const F = window.FARSIDE, g = F.game;
+         return F.region && F.region.id === 'ganymede' && g && g.missionId === 'gm-first' ? true : null;`, 30000);
+      const s = await snap();
+      result('G33: reload -> RESUME SURVEY -> Chos L02 (gm-first), payloadTaken false',
+        s.missionId === 'gm-first' && s.payloadTaken === false,
+        'missionId=' + s.missionId + ' payloadTaken=' + s.payloadTaken);
+      await shot('26_gm_l02_resumed');
+    } catch (e) {
+      result('G33: reload -> RESUME SURVEY -> Chos L02 (gm-first), payloadTaken false', false, e.message);
+    }
+  }
+
+  // G34 — select CONAMARA mid-campaign (Chos L02 stays saved): the swap is
+  // a different world (g 1.236, a Jove sky with no Earth disc) and the
+  // Ganymede blob must be untouched by the switch.
+  {
+    await tap('Escape');
+    await poll('pause overlay visible (to Conamara)',
+      `return !document.getElementById('pause').classList.contains('hidden') ? true : null;`, 10000);
+    await js(`document.getElementById('btnAbort').click(); return true;`);
+    await poll('menu visible with region cards (Conamara)',
+      `const w = document.getElementById('regionCards'); return w && w.querySelector('#region-callisto') ? true : null;`, 15000);
+    await js(`document.getElementById('region-callisto').click(); return true;`);
+    await poll('Conamara bake + swap done (menu, region swapped)',
+      `const F = window.FARSIDE;
+       return F && F.state === 1 && F.region && F.region.id === 'callisto'
+          && document.getElementById('regionload').classList.contains('hidden') ? true : null;`, 120000);
+    const c = JSON.parse(await js(`
+      const F = window.FARSIDE;
+      let gan = null;
+      try { gan = JSON.parse(localStorage.getItem('farside.ganymede.v1') || 'null'); } catch (e) {}
+      return JSON.stringify({ region: F.region.id, g: F.game.rover.g,
+        jove: !!F.sky.jove, earthGlow: F.sky.earthGlow === undefined,
+        ganBlob: gan ? gan.missionId : null });
+    `));
+    await shot('27_menu_callisto_orbit');
+    result('G34: selected CONAMARA -> swapped (g=1.236, Jove sky, ganymede blob intact on gm-first)',
+      c.region === 'callisto' && c.g === 1.236 && c.jove === true && c.earthGlow === true && c.ganBlob === 'gm-first',
+      'g=' + c.g + ' jove=' + c.jove + ' earthGlowAbsent=' + c.earthGlow + ' ganBlob=' + c.ganBlob);
+  }
+
+  // G35 — Callisto L01 playable (same shape as G31, Conamara home ref)
+  {
+    await js(`document.getElementById('btnPlay').click(); return true;`);
+    await waitCard('Conamara mission 01 card shown');
+    await shot('28_call_l01_card');
+    await js(`document.getElementById('cardGo').click(); return true;`);
+    await poll('Conamara game state PLAY',
+      `return window.FARSIDE && window.FARSIDE.state === 2 ? true : null;`, 15000);
+    let driveNote = '';
+    await tap('KeyT');
+    await sleep(2500);
+    {
+      const s0 = await snap();
+      const note = await driveTo(s0.x + s0.fx * 170, s0.z + s0.fz * 170, 20, 240000);
+      if (String(note).includes('reseated')) driveNote = ' [reseated]';
+      await poll('Callisto dHome > 122 m before the scan tap',
+        `const g = window.FARSIDE.game, p = g.rover.pos;
+         return Math.hypot(p.x - 196, p.z - 180) > 122 ? true : null;`, 30000);
+    }
+    await shot('29_call_l01_drive');
+    await waitPower(10, 120000);
+    await tap('KeyG');
+    const s = await snap();
+    await sleep(2900);
+    const found = await js(`const g = window.FARSIDE.game;
+      return g.anoms.filter((a) => a.found && !a.taken).length;`);
+    const dHome = Math.hypot(s.x - 196, s.z - 180);
+    result('G35: Conamara L01 playable (deploy, >120 m, G scan, mission complete)',
+      s.objDone.deploy === true && s.objDone.drive === true && s.objDone.scan === true && dHome > 120,
+      Math.round(dHome) + ' m' + driveNote + ' deploy=' + s.objDone.deploy +
+        ' drive=' + s.objDone.drive + ' scan=' + s.objDone.scan + ' ' + found + ' returns');
+    await poll('Callisto advanced to call-field (the 1.4 s timer)',
+      `const g = window.FARSIDE.game; return g && g.missionId === 'call-field' ? true : null;`, 30000);
+  }
+
+  // G36 — the Callisto save slot on L02 (call-field)
+  {
+    await js(`window.FARSIDE.game.save(); return true;`);
+    const blob = await poll('farside.callisto.v1 present on call-field',
+      `try {
+         const d = JSON.parse(localStorage.getItem('farside.callisto.v1'));
+         return d && d.missionId === 'call-field' ? JSON.stringify(d) : null;
+       } catch (e) { return null; }`, 10000);
+    const d = JSON.parse(blob);
+    result('G36: farside.callisto.v1 written with missionId call-field',
+      d.missionId === 'call-field', 'missionId=' + d.missionId);
+  }
+
+  // G37 — reload: RESUME lands back in Conamara L02, payload untouched
+  {
+    await send('WebDriver:Navigate', { url: URL });
+    try {
+      await poll('btnContinue visible (Callisto save detected)',
+        `const b = document.getElementById('btnContinue'); return b && !b.disabled && b.offsetParent !== null ? true : null;`, 120000);
+      await js(`document.getElementById('btnContinue').click(); return true;`);
+      await poll('resumed into Conamara L02 (call-field)',
+        `const F = window.FARSIDE, g = F.game;
+         return F.region && F.region.id === 'callisto' && g && g.missionId === 'call-field' ? true : null;`, 30000);
+      const s = await snap();
+      result('G37: reload -> RESUME SURVEY -> Conamara L02 (call-field), payloadTaken false',
+        s.missionId === 'call-field' && s.payloadTaken === false,
+        'missionId=' + s.missionId + ' payloadTaken=' + s.payloadTaken);
+      await shot('30_call_l02_resumed');
+    } catch (e) {
+      result('G37: reload -> RESUME SURVEY -> Conamara L02 (call-field), payloadTaken false', false, e.message);
+    }
+  }
+
+  // G38/G39 — Jovian bake determinism, the G28 pattern: two fresh in-page
+  // bakes of the live region bundle, 1000 random samples strictly equal,
+  // in an injected <script type="module"> (the Marionette realm has its
+  // own module map; the injected script runs in the page's main realm).
+  // These are the standing determinism cover for the two bundles that
+  // bake-diff.cjs (frozen on Anaximenes) does not reach.
+  for (const [gid, rid, name] of [['G38', 'ganymede', 'Chos'], ['G39', 'callisto', 'Conamara']]) {
+    let raw = null;
+    let det = '';
+    try {
+      await js(`
+        window.__bakeResult = null;
+        const s = document.createElement('script');
+        s.type = 'module';
+        s.textContent = [
+          "const { bakeTerrain } = await import('/src/world/bake.js');",
+          "const { REGIONS } = await import('/src/game/regions.js');",
+          "const P = REGIONS.find((r) => r.id === '${rid}').terrain;",
+          "const drain = (g) => { for (;;) { const r = g.next(); if (r.done) return r.value; } };",
+          "const a = drain(bakeTerrain(() => {}, P));",
+          "const b = drain(bakeTerrain(() => {}, P));",
+          "const fields = [[a.macro, b.macro], [a.far, b.far], [a.det, b.det]];",
+          "let n = 0, bad = 0;",
+          "while (n < 1000) {",
+          "  const f = fields[(Math.random() * fields.length) | 0];",
+          "  const i = (Math.random() * f[0].length) | 0;",
+          "  if (!Object.is(f[0][i], f[1][i])) bad++;",
+          "  n++;",
+          "}",
+          "window.__bakeResult = { n, bad };",
+        ].join('\\n');
+        document.head.appendChild(s);
+        return true;
+      `);
+      const s = await poll('in-page ' + name + ' double-bake finished',
+        `return window.__bakeResult ? JSON.stringify(window.__bakeResult) : null;`, 180000);
+      raw = JSON.parse(s);
+      det = raw.n + ' samples, mismatches=' + raw.bad;
+    } catch (e) {
+      det = e.message;
+    }
+    result(gid + ': ' + name + ' bake determinism (two in-page bakes, 1000 random samples)',
+      raw && raw.n === 1000 && raw.bad === 0, det);
+  }
+
+  // G40 — back to ANAXIMENES after FOUR region visits: the world is the
+  // Anaximenes basin again, and both Moon blobs survived the whole Jovian
+  // section untouched (Anax free-survey round-trip, LS at ls-echo).
+  {
+    await tap('Escape');
+    await poll('pause overlay visible (back to Anax)',
+      `return !document.getElementById('pause').classList.contains('hidden') ? true : null;`, 10000);
+    await js(`document.getElementById('btnAbort').click(); return true;`);
+    await poll('menu visible with region cards (back to Anax)',
+      `const w = document.getElementById('regionCards'); return w && w.querySelector('#region-anaximenes') ? true : null;`, 15000);
+    await js(`document.getElementById('region-anaximenes').click(); return true;`);
+    await poll('Anaximenes bake + swap done (menu, region swapped back)',
+      `const F = window.FARSIDE;
+       return F && F.state === 1 && F.region && F.region.id === 'anaximenes'
+          && document.getElementById('regionload').classList.contains('hidden') ? true : null;`, 120000);
+    const [blob, lsBlob, sx] = await Promise.all([(
+      poll('farside.anaximenes.v3 intact after four region visits',
+        `try {
+           const d = JSON.parse(localStorage.getItem('farside.anaximenes.v3'));
+           return d && d.missionId === null ? JSON.stringify(d) : null;
+         } catch (e) { return null; }`, 10000)
+    ), (
+      poll('farside.longshadow.v1 intact after four region visits',
+        `try {
+           const d = JSON.parse(localStorage.getItem('farside.longshadow.v1'));
+           return d && d.missionId === 'ls-echo' ? JSON.stringify(d) : null;
+         } catch (e) { return null; }`, 10000)
+    ), (
+      js(`const F = window.FARSIDE; return F && F.region && F.region.landmarks ? F.region.landmarks.station.x : null;`)
+    )]);
+    const d = JSON.parse(blob);
+    const ls = JSON.parse(lsBlob);
+    const drum = d.anoms.find((p) => p[0] === '60,-40');
+    await shot('31_menu_anaximenes_back');
+    result('G40: back to ANAXIMENES after four visits: station.x=-236, anax free-survey blob + ls-echo blob intact',
+      sx === -236 && d.missionId === null && drum && drum[1] === 1 && ls.missionId === 'ls-echo',
+      'station.x=' + sx + ' anax missionId=' + d.missionId + ' drum=' + JSON.stringify(drum) + ' ls=' + ls.missionId);
+  }
+
   try { await send('WebDriver:DeleteSession', {}); } catch {}
   done = true;
   const failed = results.filter((r) => !r.ok);

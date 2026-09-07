@@ -26,14 +26,14 @@ re-tuned.
 
 ## Acceptance criteria (contract — MUST be testable)
 
-- [ ] `main.js` defines module constant `SUN_MOON = { base: 0.42, amp: 0.12, freq: 0.5,
+- [x] `main.js` defines module constant `SUN_MOON = { base: 0.42, amp: 0.12, freq: 0.5,
       phase: -0.4 }` and `function sunAltitude(az, S = SUN_MOON) {
       return S.base + Math.sin(az * S.freq + S.phase) * S.amp; }`. `node` sanity:
       `sunAltitude(az)` with defaults evaluates identically to the old
       `0.42 + Math.sin(az * 0.5 - 0.4) * 0.12` for az ∈ {0, 1.6, 4.35, 6.18} to
       1e-12 (a 10-line node throwaway comparing the two expressions inline —
       main.js is a browser module and cannot be required in node — not committed).
-- [ ] `App.sunRate` is set at boot to `App.region.sun ? App.region.sun.rate : 0.0060`,
+- [x] `App.sunRate` is set at boot to `App.region.sun ? App.region.sun.rate : 0.0060`,
       and set likewise
       inside `selectRegion` immediately after `App.sunAz = r.sunAz0` (main.js ~299).
       `idleWorld` (main.js ~655) and `stepWorld` (main.js ~698) advance with
@@ -41,25 +41,25 @@ re-tuned.
       With the current regions (no `sun` field) the rate is `0.0060` and the curve is
       the old one — verifiable via `git diff` review (no literal `0.0060` remains at a
       sun-advance site) and by the gate.
-- [ ] `Rover(terrain, scene, opts = {})` sets `this.g = opts.g ?? MOON_G`; the
+- [x] `Rover(terrain, scene, opts = {})` sets `this.g = opts.g ?? MOON_G`; the
       `MOON_G` import is kept (still the default); the only gravity site
       (rover.js:753 `force.y -= this.mass * MOON_G`) uses `this.g`.
       `buildWorld` calls `new Rover(terrain, e.scene, { g: region.g })`.
       `window.FARSIDE.rover.g === 1.62` on both current regions (in-page).
-- [ ] `Dust(scene, terrain, sunDirRef, max, opts = {})` sets `this.g =
+- [x] `Dust(scene, terrain, sunDirRef, max, opts = {})` sets `this.g =
       opts.g ?? MOON_G`; dust.js:140 (`2 * vy / this.g + 0.55`) and dust.js:151
       (`V[i3+1] -= this.g * dt`) use `this.g`. `buildWorld` passes
       `{ g: region.g }` to `Dust` (in the same task, same `buildWorld` edit).
-- [ ] `region.g` absent → `undefined` passed as `g` → constructor default applies
+- [x] `region.g` absent → `undefined` passed as `g` → constructor default applies
       (no `NaN` anywhere: in-page `FARSIDE.rover.g === 1.62` and one real drive
       confirms dust behaves as before — the gate's campaign dust visuals are
       unchanged by definition of the run; no console errors).
-- [ ] **No region record was edited** — `git diff src/game/regions.js` empty.
-- [ ] `node --check` green on all three files.
-- [ ] GATE PASS (28/28), EXIT:0, from a clean profile — the full Anaximenes + LS
+- [x] **No region record was edited** — `git diff src/game/regions.js` empty.
+- [x] `node --check` green on all three files.
+- [x] GATE PASS (28/28), EXIT:0, from a clean profile — the full Anaximenes + LS
       sections are the behavioural identity check (sun curve appears in the campaign's
       shadow/charging behaviour; any drift shows as a failed timing check).
-- [ ] `node tools/bake-diff.cjs` still exits 0 (not touched, but run per the
+- [x] `node tools/bake-diff.cjs` still exits 0 (not touched, but run per the
       worldgen-touch rule of this phase).
 
 ## Context the worker needs (and ONLY this)
@@ -85,11 +85,11 @@ re-tuned.
 
 ## Verification gate (run before merge)
 
-- [ ] Acceptance criteria all met
-- [ ] `node --check` green
-- [ ] `node tools/bake-diff.cjs` exits 0
-- [ ] GATE PASS (28/28) from a clean profile
-- [ ] Spec still matches code (no drift)
+- [x] Acceptance criteria all met
+- [x] `node --check` green
+- [x] `node tools/bake-diff.cjs` exits 0
+- [x] GATE PASS (28/28) from a clean profile
+- [x] Spec still matches code (no drift)
 
 ---
 _Result / notes:

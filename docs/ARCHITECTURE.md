@@ -112,15 +112,40 @@ Call it at roughly 1/60 per tick. Measured: 60 ticks of 1/60 drove the rover 0.4
 `tick(1.0)` drove it 0.01 m — both advancing mission time by exactly one second. A coarse
 driver will silently report the physics as broken when it is fine.
 
+### World swap (menu only)
+
+Region switching lives in `selectRegion()` in `main.js`, and one world is in memory at a
+time. The swap rebuilds **exactly what `buildWorld` owns** — Terrain, Props, Dust, Rover,
+CameraRig, Game, Sky — and tears that list down in reverse: `game.reset()` (drops its scene
+scratch), the `terrain.group`, the `props.group`, the `dust.points`, the `rover.root`, and
+last the world-owned `Sky` — it was built first in `buildWorld`, so it goes last;
+`sky.dispose()` frees the planet/sun/star/galaxy geometries and the pmrem environment
+target before the group leaves the scene. Dust must be rebuilt, not re-pointed, because it
+wraps `terrain.uniforms.uSunDir` at construction. What does **not** get rebuilt are the
+boot singletons: `Engine`, `Audio`, `Input`, `HUD` (its minimap goes through
+`hud.bakeMap(terrain)`), the `tex` module, the settings, and the per-region albedo memo on
+`App.albTex` (so swapping out and back never regenerates a Jovian albedo).
+
 ---
 
 ## Terrain
 
 ### The bake
 
-`bakeTerrain()` is a generator, pumped across frames during load so the progress bar moves.
-**It takes no parameters** — one fixed world, from module constants. There is no seed and no
-location argument. Making a second region means parameterising it.
+`bakeTerrain(report, P)` is a generator, pumped across frames during load so the progress
+bar moves. It takes the region's **parameter bundle `P`** (bowl, rim, fall, far ridge,
+massif, rille, crater tiers, keepClean zones) — pure data: `P_ANAXIMENES` lives in
+`bake.js`, the other bundles in `regions.js`, one module that knows every world. There is
+no seed and no location argument; the seeds ride in P.
+
+**`P_ANAXIMENES` has a frozen guard:** `tools/bake-diff.cjs` holds a frozen copy of the
+pre-Phase-2 bake math and requires strict float equality against
+`bakeTerrain(P_ANAXIMENES)` plus two-bake determinism. Run it after any worldgen touch; a
+mismatch is fixed by changing the *new* code to agree, or — if Anaximenes' own P must move —
+by bumping its save key in the same commit. **The other three bundles are covered by the
+gate's in-page double-bake checks** (`P_LONGSHADOW` G28, `P_CHOS` G38, `P_CONAMARA` G39 —
+two fresh bakes, 1000 strict random samples equal), because bake-diff is frozen on
+Anaximenes only.
 
 It produces three CPU fields, all quality-independent:
 
@@ -167,7 +192,8 @@ Two further consequences of how the rings are built:
   `buildClipmap()`. The rings take a one-time snapshot of the wrapper map. A uniform added
   to `this.uniforms` afterwards never reaches any ring — the shader silently reads 0, and
   then it starts working the moment a quality change rebuilds the clipmap, which makes the
-  bug look intermittent.
+  bug look intermittent. `uBaseCol` (the region ground tint) sits in that literal and is
+  tuned per world by `.value.set()` in `buildWorld` — value mutation only.
 - `this.uniforms.uCell`, `uSag` and `uLod` are **dead objects**. `buildClipmap` replaces
   those three wrappers per ring. Writing to the ones on `this.uniforms` does nothing.
   `this.material` is never rendered either; it exists only as the shader-source template.
@@ -363,9 +389,14 @@ that happens to share a rounded coordinate. Verified in Phase 0, a one-slot posi
 moved the "extracted" flag off the drumhead core and onto the lining sample; the id scheme removes
 the positional case but not the worldgen-change case.
 
-The save blob carries no version field of its own. **The only thing that can force a reset is
-the `KEY` string in `save.js`** (now `farside.anaximenes.v3`) — bump it in the same commit as
-any change to anomaly generation or to the terrain the filters read.
+The save blob carries no version field of its own. Saves are **per-region**: `Save`
+reads/writes `r.saveKey` — four slots, `farside.anaximenes.v3` (the legacy `KEY`, still the
+default slot for a call with no region record), `farside.longshadow.v1`,
+`farside.ganymede.v1` and `farside.callisto.v1`; settings — including the selected region —
+ride in the global `farside.set` slot. The only thing that can force a reset is **that
+region's save key string** — bump it in the same commit as any change to *that region's*
+anomaly generation or to the terrain the filters read. Renaming a field inside a blob is
+load-migrated, not bumped.
 
 ---
 

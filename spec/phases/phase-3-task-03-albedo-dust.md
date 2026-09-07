@@ -28,28 +28,28 @@ base vec becomes uniform `uBaseCol` (declared in `buildMaterial()`'s literal);
 
 ## Acceptance criteria (contract — MUST be testable)
 
-- [ ] `textures.js` exports `A_MOON = { seedMare: 5, seedFine: 61, high: 190, low: 96,
+- [x] `textures.js` exports `A_MOON = { seedMare: 5, seedFine: 61, high: 190, low: 96,
       fineLo: 0.86, fineHi: 0.28, tone: [1, 0.98, 0.94], flash: null }` and
       `makeBodyAlbedo(N, A)` with the §3.5 expression (same evaluation order as
       today's loop — the `flash` branch contributes nothing when `A.flash` is null,
       the `tone` multiplies are today's exact 1/0.98/0.94).
-- [ ] **Moon-pixel identity (frozen check, in-page):** a throwaway in-page script
+- [x] **Moon-pixel identity (frozen check, in-page):** a throwaway in-page script
       (not committed) keeps a verbatim copy of the pre-task `makeMoonAlbedo` body
       (function `frozen`, `DO NOT EDIT` comment) and compares
       `frozen(256)` vs `makeBodyAlbedo(256, A_MOON)` canvas ImageData pixel-wise —
       100% of RGBA bytes equal. (256 keeps the check fast; the full 512 path then
       renders the Moon identically by construction.)
-- [ ] `makeMoonAlbedo(N)` remains exported and equals `makeBodyAlbedo(N, A_MOON)`
+- [x] `makeMoonAlbedo(N)` remains exported and equals `makeBodyAlbedo(N, A_MOON)`
       (wrapper) — `main.js:152` keeps calling it at boot; the Moon regions' runtime
       texture object is unchanged: `buildWorld` with a region lacking `albedo`
       assigns `tex.moonAlbedo` (the SAME object identity as today:
       `FARSIDE.terrain.uniforms.uAlbedoTex.value === FARSIDE.tex.moonAlbedo` on
       Anaximenes and Long Shadow).
-- [ ] Jovian path: `buildWorld` with a region carrying `albedo` memoizes
+- [x] Jovian path: `buildWorld` with a region carrying `albedo` memoizes
       `App.albTex[region.id] ||= makeBodyAlbedo(512, region.albedo)` and assigns that
       texture; swapping out and back does NOT regenerate (identity stable across
       `selectRegion` round-trips — in-page check).
-- [ ] `terrain.js`: `uBaseCol: { value: new THREE.Vector3(0.148, 0.129, 0.104) }`
+- [x] `terrain.js`: `uBaseCol: { value: new THREE.Vector3(0.148, 0.129, 0.104) }`
       **declared in `buildMaterial()`'s uniform literal** (the ring-snapshot rule —
       the AC includes reading `buildMaterial` to confirm the literal line, not just
       `this.uniforms` elsewhere); the fragment's `vec3 base = vec3(0.148, 0.129,
@@ -57,26 +57,26 @@ base vec becomes uniform `uBaseCol` (declared in `buildMaterial()`'s literal);
       `terrain.uniforms.uBaseCol.value` from `region.albedo ? tone-scaled default
       (0.148,0.129,0.104)×tone : unmodified default` per §3.5 — Moon regions write
       the exact default (value equality in-page).
-- [ ] **No quality-switch regression:** an in-page `setQuality` round-trip (HIGH →
+- [x] **No quality-switch regression:** an in-page `setQuality` round-trip (HIGH →
       MEDIUM → HIGH) leaves `uBaseCol.value` as written (quality rebuilds copy
       wrapper `.value` — verify no reset to a stale default after rebuild; this is
       the documented intermittent-uniform trap, ARCHITECTURE §Terrain).
-- [ ] `Dust(scene, terrain, sunDirRef, max, opts = {})`: `uAlbedo` uniform value from
+- [x] `Dust(scene, terrain, sunDirRef, max, opts = {})`: `uAlbedo` uniform value from
       `opts.albedo ?? [0.152, 0.133, 0.108]` (today's vec); the fragment's anomalous
       tint constant `vec3(0.36, 0.52, 0.60)` (dust.js:104) becomes uniform `uGlow`,
       value from `opts.glow ?? [0.36, 0.52, 0.60]`. `buildWorld` passes
       `region.dust` through (`{ g, albedo, glow }` — `g` already wired in task 1).
       Moon regions: values bitwise-equal to today (in-page uniform read).
-- [ ] `grep -n "0.152, 0.133, 0.108\|0.36, 0.52, 0.60" src/world/dust.js` → the
+- [x] `grep -n "0.152, 0.133, 0.108\|0.36, 0.52, 0.60" src/world/dust.js` → the
       constants survive ONLY as the documented defaults (not double-scattered in the
       GLSL/JS mix); `grep -c "uGlow" src/world/dust.js` ≥ 2 (declaration + use).
-- [ ] `node --check` green on `textures.js`, `terrain.js`, `dust.js`, `main.js`.
-- [ ] GATE PASS (28/28), EXIT:0, clean profile — the Anaximenes campaign includes the
+- [x] `node --check` green on `textures.js`, `terrain.js`, `dust.js`, `main.js`.
+- [x] GATE PASS (28/28), EXIT:0, clean profile — the Anaximenes campaign includes the
       drill/dust/trail close-ups; any albedo drift or dust-colour drift is visible in
       the gate shots (diff `.shots` menu/campaign frames against a pre-task run of a
       clean profile — they must match to within screenshot encoder noise).
-- [ ] `node tools/bake-diff.cjs` exits 0.
-- [ ] The `makeMoonAlbedo` `wrapT = RepeatWrapping` rule is preserved on
+- [x] `node tools/bake-diff.cjs` exits 0.
+- [x] The `makeMoonAlbedo` `wrapT = RepeatWrapping` rule is preserved on
       `makeBodyAlbedo`'s output (ARCHITECTURE §Rendering — the terrain tiles the
       albedo in BOTH axes; ClampToEdge would smear a row across the basin).
 
@@ -105,11 +105,11 @@ base vec becomes uniform `uBaseCol` (declared in `buildMaterial()`'s literal);
 
 ## Verification gate (run before merge)
 
-- [ ] Acceptance criteria all met
-- [ ] Moon-pixel identity check result recorded (frozen vs new: 0 diffs)
-- [ ] GATE PASS (28/28) clean profile; gate-shot diff vs pre-task run noted
-- [ ] `node tools/bake-diff.cjs` exits 0
-- [ ] Spec still matches code (no drift)
+- [x] Acceptance criteria all met
+- [x] Moon-pixel identity check result recorded (frozen vs new: 0 diffs)
+- [x] GATE PASS (28/28) clean profile; gate-shot diff vs pre-task run noted
+- [x] `node tools/bake-diff.cjs` exits 0
+- [x] Spec still matches code (no drift)
 
 ---
 _Result / notes:_

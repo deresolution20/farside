@@ -27,14 +27,14 @@ save round-trip) with evidence screenshots.
 
 ## Acceptance criteria (contract — MUST be testable)
 
-- [ ] `REGIONS` gains exactly one record with `id: 'ganymede'`,
+- [x] `REGIONS` gains exactly one record with `id: 'ganymede'`,
       `saveKey: 'farside.ganymede.v1'`, `name: 'THE CHOS PLAIN'`,
       `subtitle: 'GANYMEDE · CHOS PLAIN'`, `tagline: 'The Plain That Rings'`,
       `playableR: 432`, `g: 1.428`, and §3.1 fields `sun`/`sky`/`albedo`/`dust`
       (values per §3.8/§3.5 initial bundles; tuning notes in the result section).
       `git diff src/game/regions.js` shows the ANAXIMENES and LONGSHADOW records
       **byte-identical** to pre-task.
-- [ ] **Terrain targets** (in-page `FARSIDE.terrain.heightAt` samplers, same
+- [x] **Terrain targets** (in-page `FARSIDE.terrain.heightAt` samplers, same
       technique as Phase-2 task 05 — 13×13 grid @ 2.5 m for the pad, 60 m annulus
       for approaches, crest-vs-floor for the rise):
       - the plain reads broad/flat: no feature reads as a walled crater rim (rim crest
@@ -49,19 +49,19 @@ save round-trip) with evidence screenshots.
         existing Anaximenes evidence);
       - rim constraints hold: `playableR ≤ rim.r − rim.w/2 − 20`,
         `rim.r + rim.w < 600` (record the arithmetic in notes).
-- [ ] **Sun/sky fields behave:** with CHOS selected (menu), `FARSIDE.region.sun`
+- [x] **Sun/sky fields behave:** with CHOS selected (menu), `FARSIDE.region.sun`
       present; in PLAY, `sky.sunDir.y` stays in 0.009…0.111 over a full in-game
       altitude period (in-page: step `App.sunAz` over 4π — one full altitude
       period at freq 0.5 — sampling the sun curve; the AC is the RANGE, not a
       real-time watch); sun disc reads small (screenshot `chosing_04_far_sun`); Jove
       visible ≈ 7° across (screenshot `chosing_05_jove`); starfield visibly
       different from Anaximenes (screenshot pair at the same sky azimuth).
-- [ ] **Anomaly field** deterministic: two in-page `buildAnomalies`
+- [x] **Anomaly field** deterministic: two in-page `buildAnomalies`
       (two `Game` instances on the region) → identical ids/positions/depths;
       exactly one special: `ring` at `landmarks.rise` + (0, 0), `type: 'drum'`,
       `depth: 2.2`, `special: 'ring'`, `deep: true`, `unlocks: 'ring'`; scatter 24
       over 7 kinds incl. `frost`; no pipes.
-- [ ] **Full campaign driver run** (clean profile, gate-helper pattern):
+- [x] **Full campaign driver run** (clean profile, gate-helper pattern):
       select CHOS PLAIN → BEGIN DESCENT → card →
       L01 T/120 m/G → L02 reach postA + hold-E record + 3 excavations →
       L03 reach postB + hold-E record + **extract `ring` at 2.2 m** (the shallow
@@ -77,17 +77,17 @@ save round-trip) with evidence screenshots.
       `chosing_09_edge`); the night-less light holds (headlights optional by
       midday-mood — screenshot shows low-sun dim light with lamps ON for the
       drive, the world's signature).
-- [ ] **Lore contract:** `lore.js` `SAMPLES` diff is additive only (`+frost`,
+- [x] **Lore contract:** `lore.js` `SAMPLES` diff is additive only (`+frost`,
       `+ring`, nothing else — `pipe`/`lining`/`drum`/`cable`/`core` and the six
       Moon generics byte-identical); no new objective kinds in the campaign
       (every objective is event/distance/count with optional `unlocks`/`unlock`/
       `special`/`hint` — the Phase-1 DSL verbatim); identity sweep closed:
       `grep -rn "REGOLITH\|Anaxagoras\|Beacon-9\|MU-7\|CASSIOPEIA\|winchxyz" src/`
       → zero hits.
-- [ ] **Moon worlds still green:** GATE PASS (28/28) clean profile (the pre-existing
+- [x] **Moon worlds still green:** GATE PASS (28/28) clean profile (the pre-existing
       checks — Anaximenes + LS — unchanged); `node tools/bake-diff.cjs` exits 0;
       `node --check` green on `regions.js`, `lore.js`.
-- [ ] Two fresh in-page bakes of `P_CHOS` strictly equal (1000 macro samples — the
+- [x] Two fresh in-page bakes of `P_CHOS` strictly equal (1000 macro samples — the
       G38 preview; task 7 promotes it into the gate).
 
 ## Context the worker needs (and ONLY this)
@@ -117,11 +117,11 @@ save round-trip) with evidence screenshots.
 
 ## Verification gate (run before merge)
 
-- [ ] Acceptance criteria all met
-- [ ] Full-campaign driver run PASS logged (check counts + screenshots listed)
-- [ ] GATE PASS (28/28) clean profile
-- [ ] `node --check` green; `node tools/bake-diff.cjs` exits 0
-- [ ] Spec still matches code (no drift)
+- [x] Acceptance criteria all met
+- [x] Full-campaign driver run PASS logged (check counts + screenshots listed)
+- [x] GATE PASS (28/28) clean profile
+- [x] `node --check` green; `node tools/bake-diff.cjs` exits 0
+- [x] Spec still matches code (no drift)
 
 ---
 _Result / notes:_

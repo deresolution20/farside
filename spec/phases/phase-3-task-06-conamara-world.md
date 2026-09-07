@@ -35,13 +35,13 @@ round-trip, with evidence screenshots.
 
 ## Acceptance criteria (contract — MUST be testable)
 
-- [ ] `REGIONS` gains exactly one record with `id: 'callisto'`,
+- [x] `REGIONS` gains exactly one record with `id: 'callisto'`,
       `saveKey: 'farside.callisto.v1'`, `name: 'CONAMARA'`,
       `subtitle: 'CALLISTO · DARK FLOOR'`, `tagline: 'The Breakout Field'`,
       `playableR: 432`, `g: 1.236`, §3.1 fields `sun`/`sky`/`albedo`/`dust`
       (§3.9/§3.5 initial bundles; tuning notes in the result section).
       `git diff` shows ANAXIMENES/LONGSHADOW/CHOS records byte-identical.
-- [ ] **Terrain targets** (same in-page samplers as task 5):
+- [x] **Terrain targets** (same in-page samplers as task 5):
       - floor reads ancient + pocked: dense craters incl. large fresh ones with
         bright flash speckle (screenshot `conamara_02_dark_floor`, compare against
         `chosing_02` — visibly different world);
@@ -55,14 +55,14 @@ round-trip, with evidence screenshots.
         (screenshot `conamara_08_night_drive` — Jove + stars up, headlights on,
         SOL PHASE negative);
       - rim constraints + `playableR 432` hold (record arithmetic).
-- [ ] **First-night pacing:** with the bundled `sunAz0`/`sun.rate`, the L04
+- [x] **First-night pacing:** with the bundled `sunAz0`/`sun.rate`, the L04
       `night` objective (reach `field` < 26 m) is demonstrably reachable **at
       night in a normal playthrough**: in-page timeline check — simulating the
       driver's L01–L04 durations (use the task 5 driver's measured per-mission
       times) shows `sky.sunDir.y < 0` for the entire hub → field approach segment
       (record the azimuth window + times in notes). If it does NOT hold, adjust
       `sunAz0`/`rate` (data only) until it does and record the final values.
-- [ ] **`buildBreakout(x, z, s)`**: 3–5 curved glass tubes (the `buildPipeNode`
+- [x] **`buildBreakout(x, z, s)`**: 3–5 curved glass tubes (the `buildPipeNode`
       glass material — same PBR params, no new material system), rubble fan
       (deformed icosahedra, `buildBoulders` pattern), a bright flat "flash patch"
       disc under the cluster (MeshBasicMaterial-ish brightness, no decal plumbing),
@@ -74,14 +74,14 @@ round-trip, with evidence screenshots.
       (0.8–1.8 range tested: no clipping through the flash disc, tubes stay above
       ground). Chos/Moon regions have no `breakouts` → builder never called there
       (in-page: `FARSIDE.props.group` child count unchanged across a Chos swap).
-- [ ] **Anomaly field** deterministic: two in-page builds → identical;
+- [x] **Anomaly field** deterministic: two in-page builds → identical;
       `pipes: { anchor: 'field', rings: 4 }` lattice present (in-page: anomaly
       list has ≥ 4×(1+…ring counts — record the actual count, all `type: 'pipe'`,
       `deep: true`, centred on `field`, within the lattice radii the generator
       uses); scatter 34 over 7 kinds incl. `flash`; specials: `shard` at
       `field`+(2, 3) `depth 0.9 special 'shard'`; `tap` at `postB`+(9, −6)
       `depth 2.6 special 'tap'`.
-- [ ] **Full campaign driver run** (clean profile): select CONAMARA → BEGIN DESCENT
+- [x] **Full campaign driver run** (clean profile): select CONAMARA → BEGIN DESCENT
       → card → L01 T/120 m/G (sweep shows the dense lattice — screenshot
       `conamara_03_radar_dense`) → L02 reach field + 3 excavations in the lattice
       + **extract `shard` at 0.9 m** (shallowest near-surface core; verify bay
@@ -94,16 +94,16 @@ round-trip, with evidence screenshots.
       Also: after this run, `farside.ganymede.v1` still holds its free-survey blob
       from task 5's run on the SAME profile (cross-region save integrity — the
       G34 preview).
-- [ ] **Lore contract:** `lore.js` `SAMPLES` diff additive only (`+flash`, `+shard`,
+- [x] **Lore contract:** `lore.js` `SAMPLES` diff additive only (`+flash`, `+shard`,
       `+tap`); no new DSL kinds; identity sweep closed
       (`grep -rn "REGOLITH\|Anaxagoras\|Beacon-9\|MU-7\|CASSIOPEIA\|winchxyz" src/`
       → zero hits).
-- [ ] **Prior worlds still green:** GATE PASS (28/28) clean profile (all
+- [x] **Prior worlds still green:** GATE PASS (28/28) clean profile (all
       pre-existing checks, Chos included — the 28 rest on Moon data; Chos is
       verified by its own task-5 driver re-running clean: select CHOS → its save
       resumes free survey → a short free-survey drive, no console errors);
       `node --check` green; `node tools/bake-diff.cjs` exits 0.
-- [ ] Two fresh in-page bakes of `P_CONAMARA` strictly equal (1000 macro samples —
+- [x] Two fresh in-page bakes of `P_CONAMARA` strictly equal (1000 macro samples —
       the G39 preview).
 
 ## Context the worker needs (and ONLY this)
@@ -134,12 +134,12 @@ round-trip, with evidence screenshots.
 
 ## Verification gate (run before merge)
 
-- [ ] Acceptance criteria all met
-- [ ] Full-campaign driver run PASS logged (check counts + screenshots listed,
+- [x] Acceptance criteria all met
+- [x] Full-campaign driver run PASS logged (check counts + screenshots listed,
       night window recorded)
-- [ ] GATE PASS (28/28) clean profile + CHOS task-5 re-run clean
-- [ ] `node --check` green; `node tools/bake-diff.cjs` exits 0
-- [ ] Spec still matches code (no drift)
+- [x] GATE PASS (28/28) clean profile + CHOS task-5 re-run clean
+- [x] `node --check` green; `node tools/bake-diff.cjs` exits 0
+- [x] Spec still matches code (no drift)
 
 ---
 _Result / notes:_

@@ -38,7 +38,7 @@ Updated after each task.
   codex, anomalies, station, drum, transmit, ending card), HUD/map/codex UI, settings,
   audio, autosave/resume. Gate green, spec updated.
 
-### Phase 2 — regions & levels (in progress)
+### Phase 2 — regions & levels (closed, gate 28/28, 2026-09-02)
 Two regions: **Anaximenes** (existing world, must stay byte-identical) +
 **The Long Shadow** (new basin, 5-mission campaign). Design in
 `spec/phases/phase-2-regions-levels.md`; task specs `phase-2-task-01..07`.
@@ -54,7 +54,7 @@ Two regions: **Anaximenes** (existing world, must stay byte-identical) +
   - Verified: BAKE-DIFF PASS (macro/far/det bit-identical, deterministic), `node --check`
     green, **GATE PASS 21/21** (full campaign + save round-trip, fresh profile).
 
-## Next tasks (Phase 2, in order)
+## Completed tasks (Phase 2, in order)
 
 - [x] **Task 2 — region data + per-region saves** (DONE)
   - `src/game/regions.js` (NEW, 173 lines): `REGIONS = [ANAXIMENES, LONGSHADOW]`
@@ -178,15 +178,54 @@ Two regions: **Anaximenes** (existing world, must stay byte-identical) +
     `ls05_04`, swap back to Anaximenes clean); **GATE PASS 21/21** (fresh
     profile). The `ls05-verify.cjs` driver is intentionally uncommitted (spec:
     sampler inline, no new committed tool) — fold into the G22–G28 gate in Task 7.
-- [ ] **Task 6 — The Long Shadow campaign** (`regions.js`, `lore.js`)
+- [x] **Task 6 — The Long Shadow campaign** (`regions.js`, `lore.js`) (DONE)
   - Missions L02–L05 (`ls-echo`, `ls-quiet`, `ls-silence`, `ls-count`), codex
     `ls-posta/ls-postb/ls-hub/ls-count`, ending card THE COUNT; additive SAMPLES
     `cable` + `core` (shared taxonomy, Anaximenes entries untouched).
-- [ ] **Task 7 — gate extension + phase close** (`tools/gate.cjs`)
+- [x] **Task 7 — gate extension + phase close** (`tools/gate.cjs`) (DONE)
   - Existing 21 checks unchanged + G22 menu cards, G23 Long Shadow bake/samples,
     G24 L01 playthrough, G25 `farside.longshadow.v1` written, G26 reload → resume L02,
     G27 switch back to Anaximenes (v3 intact, station at -236), G28 bake determinism.
-  - Demo the slice, update product-spec phase map + changelog, close the phase in a fresh session.
+  - **GATE PASS 28/28** (fresh profile) closed the phase; product-spec changelog +
+    HANDOFF updated.
+
+### Phase 3 — planets & content (closed, gate 40/40, 2026-09-06)
+Two foreign airless bodies added on top of the Phase-2 region record — a planet is a
+**pure-data extension** (gravity, sun cycle, sky, albedo, dust colour), no new engine
+code paths. The two Moon basins stay byte-identical (bake-diff + gate). Design in
+`spec/phases/phase-3-planets-content.md`; task specs `phase-3-task-01..07`. Evidence in
+`spec/evidence/phase-3/`.
+
+- [x] **Task 1 — sun cycle + gravity wiring** (DONE) — per-region `sun`
+  (`rate/base/amp/freq/phase` → `sunAltitude(az, S)` + `App.sunRate`) and `g`
+  (`Rover`/`Dust` opts, default `MOON_G` = 1.62). Moon defaults bit-exact.
+- [x] **Task 2 — world-owned Sky** (DONE) — `Sky(renderer, scene, textures,
+  quality, cfg)`; the Earth path runs verbatim under `SKY_MOON`; `makeJoveTextures` +
+  Galilean companion dots; Jove sky for the foreign worlds; `Sky.dispose()` joins the
+  `selectRegion` teardown (built first in `buildWorld`, torn down last).
+- [x] **Task 3 — ground albedo + dust palette** (DONE) — `makeBodyAlbedo(N, A)` +
+  `makeMoonAlbedo` wrapper (pixel-identical Moon), per-region `App.albTex` memo,
+  `uBaseCol` ground tint (declared in `buildMaterial()`'s literal, value-mutated only),
+  `Dust` colour opts.
+- [x] **Task 4 — four-card menu** (DONE) — `#regionCards` 2×2 desktop / 1-col narrow;
+  all four statuses derive from their own saves.
+- [x] **Task 5 — THE CHOS PLAIN** (`ganymede`, `farside.ganymede.v1`) (DONE) —
+  `P_CHOS` (+ `g` 1.428, low never-setting sun, Jove ≈7°, pale ground); the 2.2 m `ring`
+  drumhead under the rise (shallowest drill); `frost`+`ring` SAMPLES; 5-mission campaign
+  → **THE ARRIVAL**. Full-campaign driver 61/61, gate 28/28.
+- [x] **Task 6 — CONAMARA + `buildBreakout`** (`callisto`, `farside.callisto.v1`)
+  (DONE) — `P_CONAMARA` (+ `g` 1.236, first real day/night: sun dips below 0°, the night
+  objective); dark impact-flash pockmarked ground; the pipe **lattice** under the breakout
+  field + the one new prop builder `buildBreakout(x,z,s)` (wired from
+  `region.props.breakouts`); `flash`+`shard`+`tap` SAMPLES (`shard` dielectric-matched to
+  Anaximenes); 5-mission campaign → **THE EVENT**. Full-campaign driver 71/71, gate 28/28.
+- [x] **Task 7 — gate G29–G40, evidence, close** (DONE) — append-only gate
+  extension (+324 lines, G1–G28 untouched; four cards; Chos + Conamara
+  swap/L01/save/resume/g/sky sanity; two in-page double-bake determinism checks;
+  back-to-Anax round-trip), evidence set (35 shots), ARCHITECTURE.md sync, Product
+  Spec row 3 + changelog, HANDOFF rewrite.
+  - **GATE PASS 40/40** (clean profile, 29 min) closed the phase; bake-diff +
+    identity sweep green.
 
 ## Out of scope for Phase 2
 

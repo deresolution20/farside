@@ -23,24 +23,24 @@ cards must look and behave as today.
 
 ## Acceptance criteria (contract — MUST be testable)
 
-- [ ] With a temporary 4th+5th stub card injected in-page (`renderRegionCards` with
+- [x] With a temporary 4th+5th stub card injected in-page (`renderRegionCards` with
       two fake entries added to a COPY of REGIONS — in-page only, not committed),
       the card row lays out as 2×2 at 1280×800 with equal widths, no overlap, no
       horizontal scroll, and the selected card's `.sel` state still renders;
       screenshot to `.shots/`.
-- [ ] Narrow-viewport check: at 420 px wide the cards stack 1-column, full width
+- [x] Narrow-viewport check: at 420 px wide the cards stack 1-column, full width
       (in-page resize + screenshot — touch users get a usable menu).
-- [ ] **Current behaviour unchanged:** with the real two regions, the menu looks
+- [x] **Current behaviour unchanged:** with the real two regions, the menu looks
       pixel-same as today (gate shots `01_menu*` diff against a pre-task clean
       profile run — encoder noise only); card click-select, status lines
       (`NO SURVEY — READY FOR DESCENT` / `SURVEY IN PROGRESS — <tag>` /
       `SURVEY COMPLETE — FREE SURVEY`) and `settings.region` persistence all
       unchanged (G22–G27 rest on them).
-- [ ] Nothing named `.panel` was added at overlay scope (the documented collision —
+- [x] Nothing named `.panel` was added at overlay scope (the documented collision —
       styles.css HUD instrument class); new classes, if any, are
       `.region-card*`-namespaced.
-- [ ] `node --check` green (CSS-only change ⇒ gate + check suffice).
-- [ ] GATE PASS (28/28), EXIT:0, clean profile.
+- [x] `node --check` green (CSS-only change ⇒ gate + check suffice).
+- [x] GATE PASS (28/28), EXIT:0, clean profile.
 
 ## Context the worker needs (and ONLY this)
 

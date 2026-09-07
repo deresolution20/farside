@@ -151,18 +151,26 @@ when flipped · Tab codex · Esc pause. Phone: twin thumbsticks + action buttons
 | 0 | Rebase onto the browser codebase | browser codebase vendored, game plays end-to-end in a tab, gate green with screenshot evidence | done |
 | 1 | Data-driven missions | objective ids/logic live in mission data (not `gameplay.js`), `missionIdx` positional gates gone, new mission addable as pure data, saves survive (or `KEY` bumped) | done |
 | 2 | Regions / levels | `bakeTerrain()` parameterised; 2+ selectable named regions on the menu, each with its own campaign + save slot | done (2026-09-02, gate 28/28) |
-| 3 | Planets & content | planet = pure data (gravity, sky, terrain, campaign); 2+ new worlds playable; expanded mission content | planned |
+| 3 | Planets & content | planet = pure data (gravity, sky, terrain, campaign); 2+ new worlds playable; expanded mission content | done (2026-09-06, gate 40/40) |
 
 ## 8. Open questions / risks
-- **Identity-based anomaly saves** — the `KEY` is the sharpest edge: anomaly ids are
-  coordinate-derived, so any worldgen/filter change moves them and silently re-keys old
-  saves. Mitigation: save `KEY` bump discipline (constitution).
+- **Identity-based anomaly saves — now a per-region save-key surface** — anomaly ids
+  are coordinate-derived, so any worldgen/filter change for a region moves its ids and
+  silently re-keys *that region's* saves. Four slots now exist
+  (`farside.anaximenes.v3` / `.longshadow.v1` / `.ganymede.v1` / `.callisto.v1`).
+  Mitigation: per-region bump discipline (constitution) — `bake-diff.cjs` covers
+  Anaximenes only (frozen reference); the other three bundles ride on per-world
+  in-page double-bake gate checks (G28/G38/G39, 1000 strict samples). If the number
+  of regions keeps growing, a node-side identity tool per bundle would earn its keep.
 - **Mission refactor touches the one file everything touches** (`gameplay.js`); keep task
   allowlists tight and re-run the gate after every task.
 - **Terrain parameterisation** must not break the CPU/GPU heightfield contract or the
   95 m camera-fade window; Phase 2 deep-plan must read `docs/ARCHITECTURE.md` §Terrain.
-- **Scope risk (planets)** — a "planet" is a data bundle, not a new engine; anything that
-  starts looking like a new code path goes to `spec/IDEAS.md`.
+- **Scope risk (planets) — resolved at the Phase-3 close.** A "planet" stayed a data
+  bundle: four worlds shipped with `REGIONS` records + one pre-approved prop builder
+  (`buildBreakout`) and three recorded line-level deviations (§3.12-style notes in the
+  task specs). One latent gameplay fix (re-transmit of an already-stowed payload)
+  crossed the guard line and was parked in `spec/IDEAS.md` rather than shipped.
 - **Headful-only gate** — the gate needs a real X11 display (:1) and headful Firefox
   (Mesa WebGL2); no CI story yet. That's accepted for now.
 
@@ -220,5 +228,45 @@ _Changelog (update on every phase close — fights spec-code drift):_
   **28 checks** (existing campaign + save round-trip unchanged first, then: both menu cards with
   statuses, A→Long Shadow→A swap, Long Shadow L01 playable, `farside.longshadow.v1` round-trip
   into L02, Anaximenes save intact across the swap, Long Shadow bake determinism — two in-page
-  bakes, 1000 strictly-equal samples) — **GATE PASS (28/28), exit 0** from a clean profile;
-  evidence in `spec/evidence/phase-2/`.
+   bakes, 1000 strictly-equal samples) — **GATE PASS (28/28), exit 0** from a clean profile;
+   evidence in `spec/evidence/phase-2/`.
+- 2026-09-06: **Phase 3 (planets & content) closed.** The planet abstraction held: a world
+  is a **pure-data region bundle** — optional `g`, `sun` (rate + altitude curve →
+  `sunAltitude(az, S)` / `App.sunRate`), `sky` (Earth or Jove: `planet`, Jove
+  direction/size/companion dots, sun disk `sunAngular`/`sunScale`, `starSeed`, IBL ground
+  bounce), `albedo` (seeded `makeBodyAlbedo` + `tone` ground tint via the `uBaseCol`
+  uniform) and `dust` palette fields, read with Moon-identical defaults — and the
+  abstraction is proven by **two fully playable foreign worlds**: **THE CHOS PLAIN**
+  (`ganymede`, `farside.ganymede.v1`, `g` 1.428 — a pale plain under a 7° Jove and a low
+  far sun that never sets, the 2.2 m resonant-lining ring under the rise, 5-mission
+  campaign → **THE ARRIVAL**) and **CONAMARA** (`callisto`, `farside.callisto.v1`,
+  `g` 1.236 — the breakout pipe lattice under a dark impact-flash-pocked floor under the
+  game's **first real night**; sunset mid-campaign, a headlight night objective, a shard
+  dielectric-matched to Anaximenes' pipe glass, 5-mission campaign → **THE EVENT**).
+  One new prop builder (`buildBreakout`), five additive `SAMPLES` keys
+  (`frost`/`ring`/`flash`/`shard`/`tap`), a four-card menu, a world-owned `Sky` (built
+  first in `buildWorld`, torn down last, `Sky.dispose()` covering geometries + the pmrem
+  env target) and a per-region albedo memo on `App.albTex`. **Identity results:** the two
+  Moon basins are untouched — `bake-diff.cjs` frozen-reference green, the ANAXIMENES /
+  LONGSHADOW record blocks byte-identical to pre-phase, Moon default objects
+  (`SKY_MOON`, `A_MOON` wrapper, `MOON_G`, sun curve 0.42+sin(·0.5−0.4)·0.12,
+  `0.0060` rate) exact, the identity sweep closed (0 hits), lore diff additive-only, no
+  runtime assets added (Jove is procedural in `textures.js`). **Gate 28 → 40:**
+  G1–G28 run first, unchanged (append-only file diff), then G29 four-card menu with
+  per-region statuses; G30 Chos swap (rise-to-plain 10.6 m band, low never-setting sun,
+  fresh Sky instance in scene); G31–G33 Chos L01 → `farside.ganymede.v1` round-trip;
+  G34 Conamara swap (`rover.g` 1.236, Jove sky with no Earth disc, Ganymede blob intact);
+  G35–G37 Conamara L01 → `farside.callisto.v1` round-trip; G38/G39 in-page two-bake
+  determinism for the Jovian bundles (1000 strict samples — the standing cover bake-diff
+  does not reach); G40 back to Anaximenes after four region visits with both Moon blobs
+  intact — **GATE PASS (40/40), exit 0** from a clean profile in 29 min. Evidence in
+  `spec/evidence/phase-3/` (35 shots: task 5/6 passing-run driver shots + close-run
+  menu/orbit/drive shots). **Phase-3 guard outcome:** nothing had to be split — the guard
+  held; the only code beyond data was the pre-approved builder plus three recorded
+  line-level deviations (lens-ghost streak × `rover.sunVis`, a `dt ≥ 1e-3` integration
+  floor in `Rover.step` against a degenerate rAF tie, a per-body flash-threshold param in
+  `textures.js`), and one latent gameplay fix (re-transmit of an already-stowed payload —
+  a `gameplay.js` work item) was parked in `spec/IDEAS.md` rather than shipped. The
+  §3.2/§3.9 sun-curve value columns are tuning *starts*: both Jovian curves were re-tuned
+  against measured playthrough pacing in tasks 5/6 (final values + provenance in the
+  task-05/06 result notes), as the phase spec anticipated.

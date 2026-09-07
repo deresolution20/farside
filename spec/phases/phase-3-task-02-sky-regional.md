@@ -29,11 +29,11 @@ and the `Game` receives the world's sky via its ctx.
 
 ## Acceptance criteria (contract — MUST be testable)
 
-- [ ] `sky.js` exports `SKY_MOON = { planet: 'earth', sunAngular: 0.00930,
+- [x] `sky.js` exports `SKY_MOON = { planet: 'earth', sunAngular: 0.00930,
       sunScale: 1.0, starSeed: 0xA17A6 }` and the `Sky` constructor signature is
       `(renderer, scene, textures, quality, cfg = SKY_MOON)`; booting with no cfg
       (both current regions) exercises that default end-to-end.
-- [ ] **Moon parity (in-page, pre-Jovian-worlds):** booting Anaximenes gives
+- [x] **Moon parity (in-page, pre-Jovian-worlds):** booting Anaximenes gives
       `FARSIDE.sky.earth` present, `starMat.uniforms.uInt` initial 1.0, sun quad
       geometry bounding half-extents matching today's `D = 8000*0.0093/0.13*0.5`
       (compare `FARSIDE.sky.sun.geometry.boundingSphere.radius` across a git-stash
@@ -44,12 +44,12 @@ and the `Game` receives the world's sky via its ctx.
       `uSunCol.value` (2.6, 2.46, 2.24), Earth tint term unchanged in the env
       shader source (diff of `envMat` vertex/fragment string: identical under
       `SKY_MOON`).
-- [ ] `_buildStars` uses `makeRNG(cfg.starSeed)` (seed was the literal 0xA17A6);
+- [x] `_buildStars` uses `makeRNG(cfg.starSeed)` (seed was the literal 0xA17A6);
       everything else in its loop is untouched (same magnitude/spectral math).
-- [ ] `_buildSun` sizes the quad from `cfg.sunAngular` (the formula
+- [x] `_buildSun` sizes the quad from `cfg.sunAngular` (the formula
       `D = 8000 * sunAngular / 0.130 * 0.5` with `sunAngular = cfg.sunAngular`);
       the fragment shader is untouched (disc/limb/corona constants stay).
-- [ ] `_buildPlanet(textures, cfg)`: `'earth'` path is byte-identical logic to
+- [x] `_buildPlanet(textures, cfg)`: `'earth'` path is byte-identical logic to
       today's `_buildEarth` (same sphere size from `EARTH_ANGULAR`, same shader
       strings, halo, `update()` libration wobble constants 0.0021/0.055/0.030/0.0009
       and direction (0, 0.28, −1) → `this.earthDir` initial, mesh on `this.earth`);
@@ -62,7 +62,7 @@ and the `Game` receives the world's sky via its ctx.
       Earth-like 7400 m billboard placement) with a radial-falloff sprite texture
       (factory copied from `dust.js`'s `grainSprite()` pattern — a local ~15-line
       helper in sky.js; **no import from dust.js**).
-- [ ] `_buildEnv` uniforms: `uGround` — Moon: exactly (0.19, 0.168, 0.140);
+- [x] `_buildEnv` uniforms: `uGround` — Moon: exactly (0.19, 0.168, 0.140);
       Jovian: from the region's `sky.ground` bundle field (phase spec §3.1) — CHOS
       `[0.17, 0.165, 0.155]`, CONAMARA `[0.10, 0.08, 0.06]`; falls back to the Moon
       constant when absent; `uSunCol` scaled by `cfg.sunScale` (Moon ×1.0 =
@@ -70,14 +70,14 @@ and the `Game` receives the world's sky via its ctx.
       (Moon: Earth blue at `uEarth`; Jovian: warm (0.55, 0.44, 0.32) at the jove
       direction). All as **uniform values / shader-source-identical** — no new
       passes.
-- [ ] `makeJoveTextures(W = 1024, H = 512)` in `textures.js`: procedural banded gas
+- [x] `makeJoveTextures(W = 1024, H = 512)` in `textures.js`: procedural banded gas
       giant (fbm-wobbled latitude bands + 2–3 vortices), sRGB canvas →
       `toTexture` with the equirectangular wrap rule (`wrapS = RepeatWrapping`,
       `wrapT = ClampToEdgeWrapping`), returns `{ jove: <texture> }`; built once at
       boot into `tex` (main.js, next to the Earth fill ~main.js:149-152:
       `if (!tex.jove) Object.assign(tex, makeJoveTextures());`).
       `grep -n "assets/"` shows no new disk references (zero-runtime-assets).
-- [ ] **buildWorld owns Sky:** `buildWorld` constructs `new Sky(e.renderer,
+- [x] **buildWorld owns Sky:** `buildWorld` constructs `new Sky(e.renderer,
       e.scene, tex, e.quality, region.sky ?? SKY_MOON)`, adds `sky` to its return,
       and the Game ctx passes that `sky` (replacing `sky: App.sky` at main.js:219).
       Boot (main.js ~158) no longer constructs the Sky — the comment at 156-157 is
@@ -86,16 +86,16 @@ and the `Game` receives the world's sky via its ctx.
       existing four removes, before the `buildWorld` call): dispose +
       `e.scene.remove(App.sky.group)`. `Sky.dispose()` extended to also dispose
       planet/sun/star/galaxy geometries+materials and companion points (idempotent).
-- [ ] Swap smoke (in-page): from the menu, selecting THE LONG SHADOW swaps the
+- [x] Swap smoke (in-page): from the menu, selecting THE LONG SHADOW swaps the
       world and `FARSIDE.sky` identity changes (new instance), the old sky's group
       is not in `engine.scene.children`, and the Earth renders (Long Shadow is a
       Moon world — `planet: 'earth'` default); selecting back keeps Anaximenes
       identical. No console errors; no `_envDirty` rebuild storm (the 6 s throttle
       in `stepWorld` untouched; a fresh Sky starts `_envDirty: true` once).
-- [ ] GATE PASS (28/28), EXIT:0, clean profile (the gate exercises both Moon worlds
+- [x] GATE PASS (28/28), EXIT:0, clean profile (the gate exercises both Moon worlds
       + the swap; any Sky regression in the Moon path fails it).
-- [ ] `node --check` green on `sky.js`, `textures.js`, `main.js`.
-- [ ] `node tools/bake-diff.cjs` exits 0.
+- [x] `node --check` green on `sky.js`, `textures.js`, `main.js`.
+- [x] `node tools/bake-diff.cjs` exits 0.
 
 ## Context the worker needs (and ONLY this)
 
@@ -122,11 +122,11 @@ and the `Game` receives the world's sky via its ctx.
 
 ## Verification gate (run before merge)
 
-- [ ] Acceptance criteria all met
-- [ ] Moon-parity checks recorded in result notes (with the measured values)
-- [ ] GATE PASS (28/28) clean profile
-- [ ] `node tools/bake-diff.cjs` exits 0
-- [ ] Spec still matches code (no drift)
+- [x] Acceptance criteria all met
+- [x] Moon-parity checks recorded in result notes (with the measured values)
+- [x] GATE PASS (28/28) clean profile
+- [x] `node tools/bake-diff.cjs` exits 0
+- [x] Spec still matches code (no drift)
 
 ---
 _Result / notes:_

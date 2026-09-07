@@ -31,45 +31,54 @@ central object — extends past the Moon: *it started at your landing, on every 
 
 ## 2. What "done" looks like (phase acceptance criteria)
 
-- [ ] The menu shows **four** named regions (ANAXIMENES, THE LONG SHADOW, THE CHOS
+- [x] The menu shows **four** named regions (ANAXIMENES, THE LONG SHADOW, THE CHOS
       PLAIN, CONAMARA); each card shows a per-region status derived from that region's
-      save; layout stays clean at 1280×800. **Proof:** G29 (+ screenshot).
-- [ ] **THE CHOS PLAIN** (`ganymede`, `farside.ganymede.v1`): full 5-mission campaign
+      save; layout stays clean at 1280×800. **Proof:** G29 (+ close-run shots
+      `spec/evidence/phase-3/01_menu.png` — clean profile, all four NO SURVEY — and
+      `22_menu_four_cards.png` at the post-campaign status mix).
+- [x] **THE CHOS PLAIN** (`ganymede`, `farside.ganymede.v1`): full 5-mission campaign
       (THE DARK PLAIN → THE FIRST ENTRY → THE RING → THE LONG DRIVE → THE ARRIVAL) →
       ending card **THE ARRIVAL** → free survey. `g = 1.428`; sun altitude stays in
       0.6°–6.5° (never sets), cycles on the ~70-min crawl; 5×-smaller far sun at 0.55 light
       scale; Jove ≈ 7° across in the sky; pale low-contrast ground; the 2.2 m `ring`
-      drumhead under the rise is the shallowest drill in the game. **Proof:** G31–G34
-      (L01, save round-trip) + full-campaign driver run with screenshots in
-      `spec/evidence/phase-3/`.
-- [ ] **CONAMARA** (`callisto`, `farside.callisto.v1`): full 5-mission campaign (THE
+      drumhead under the rise is the shallowest drill in the game. **Proof:** G31–G34 (L01,
+      save round-trip) + full-campaign driver run (61/61) with screenshots in
+      `spec/evidence/phase-3/` (`chosing_04_far_sun`, `05_jove`, `03_longdrive`,
+      `08_ring_drill`, `10_ending`).
+- [x] **CONAMARA** (`callisto`, `farside.callisto.v1`): full 5-mission campaign (THE
       DARK FLOOR → THE FIELD → THE DEAD TAP → DUSK → THE EVENT) → ending card **THE
       EVENT** → free survey. `g = 1.236`; first real day/night (sun altitude dips
       below 0°, charging stops, headlights carry a night objective); star-like far sun
       at 0.42 light scale; Jove ≈ 4.4°; dark reddish ground with bright impact-flash
       speckle; the pipe **lattice** under the breakout field + `buildBreakout` prop;
-      `shard` glass dielectric-matched to Anaximenes (codex beat). **Proof:** G35–G37
-      + G34 (g/sun sanity) + full-campaign driver run with screenshots.
-- [ ] **The Moon worlds are untouched**: `node tools/bake-diff.cjs` exits 0 after every
+      `shard` glass dielectric-matched to Anaximenes (codex beat). **Proof:** G35–G37 +
+      G34 (g/sun sanity) + full-campaign driver run (71/71) with screenshots
+      (`conamara_02_dark_floor`, `04_field`, `08_night_drive`, `09_ending`).
+- [x] **The Moon worlds are untouched**: `node tools/bake-diff.cjs` exits 0 after every
       worldgen touch; `farside.anaximenes.v3` / `farside.longshadow.v1` blobs intact
       across the whole 40-check gate; the Anaximenes & Long Shadow sun curve, starfield
       seed, Earth disc and lunar albedo are **exactly** today's values (Moon default
       object + `makeMoonAlbedo` wrapper); their region records carry none of the new
-      fields (defaults are read, not rewritten). **Proof:** G1–G27 unchanged, G40
-      (back-to-Anaximenes round-trip intact); diff of `regions.js` shows the two Moon
-      records byte-identical to pre-phase.
-- [ ] **Data-only lore**: `SAMPLES` gains exactly five additive keys
+      fields (defaults are read, not rewritten). **Proof:** G1–G27 unchanged in this
+      run, G40 (back-to-Anaximenes round-trip intact after four region visits);
+      `regions.js` vs pre-phase commit `ba614f3`: the ANAXIMENES and LONGSHADOW
+      record blocks byte-identical (task-7 check); bake-diff exit 0.
+- [x] **Data-only lore**: `SAMPLES` gains exactly five additive keys
       (`frost`, `ring`, `flash`, `shard`, `tap`) — Moon keys untouched; no new objective
       DSL kinds (event/distance/count + `unlocks`/`unlock` only); no new prop mechanics
       beyond one new builder (`buildBreakout`); the identity sweep stays closed
       (no `REGOLITH`/`Anaxagoras`/`Beacon-9`/`MU-7`/`CASSIOPEIA`/`winchxyz` reappear
-      outside vendor/). **Proof:** grep contract (task 7).
-- [ ] **Gate:** `GATE PASS (40/40), EXIT:0` from a clean profile — existing G1–G28 run
-      first, unchanged, then G29–G40 (§3.10). **Proof:** close run log.
-- [ ] `node --check` green on every JS file; no new runtime assets (Jove imagery is
+      outside vendor/). **Proof:** grep contract run in task 7 — `grep -rE` sweep over
+      `src/` 0 hits; `git diff -- src/game/lore.js` = +5 additive keys only;
+      `git diff -- src/` contains no new `fetch`/URL/asset usage.
+- [x] **Gate:** `GATE PASS (40/40), EXIT:0` from a clean profile — existing G1–G28 run
+      first, unchanged, then G29–G40 (§3.10). **Proof:** close run log (29 min,
+      per-check results in the task-07 result notes).
+- [x] `node --check` green on every JS file; no new runtime assets (Jove imagery is
       procedural in `textures.js`); cold start fully offline. **Proof:** per-task
-      verification.
-- [ ] Product Spec §7 row 3 → done + 2026-09-xx changelog; `HANDOFF.md` rewritten;
+      verification + the close run's cold boot (no network requests in the page
+      session).
+- [x] Product Spec §7 row 3 → done + 2026-09-06 changelog; `HANDOFF.md` rewritten;
       `docs/ARCHITECTURE.md` synced (§3.11); evidence in `spec/evidence/phase-3/`.
 
 ## 3. Technical design
@@ -619,7 +628,7 @@ Dependency order; full verification gate (syntax + bake-diff + browser gate) aft
 | 4 | Menu four-card layout: `#regionCards` CSS reflow (2×2 desktop / 1-col narrow), statuses render for all four from their saves | easy | 3 | done (09-04, `6415028`) |
 | 5 | THE CHOS PLAIN world data: `P_CHOS` tuned to targets, landmarks/props/content/anoms/sky/sun/g/albedo/dust fields, `frost`+`ring` SAMPLES (lore.js additive), codex ×6, campaign L01–L05 + THE ARRIVAL, saveKey; full-campaign driver run + evidence | hard | 4 | done (09-05, driver 61/61 + gate 28/28) |
 | 6 | CONAMARA world data + `buildBreakout` prop builder (props.js + wiring): `P_CONAMARA` tuned, landmarks/props/anoms (lattice + breakouts)/fields, `flash`+`shard`+`tap` SAMPLES, codex ×6, campaign L01–L05 + THE EVENT, saveKey; full-campaign driver run + evidence | hard | 5 | done (09-06, driver 71/71 + gate 28/28) |
-| 7 | Gate G29–G40 (append-only), evidence to `spec/evidence/phase-3/`, Product Spec §7 row 3 + changelog, ARCHITECTURE.md sync (§3.11), HANDOFF rewrite for the next session | gate | 6 | todo |
+| 7 | Gate G29–G40 (append-only), evidence to `spec/evidence/phase-3/`, Product Spec §7 row 3 + changelog, ARCHITECTURE.md sync (§3.11), HANDOFF rewrite for the next session | gate | 6 | done (09-06, gate 40/40, 29 min) |
 
 ## 6. Out of scope for this phase
 
