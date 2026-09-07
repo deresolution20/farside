@@ -7,9 +7,15 @@ Thumbs.db
 
 .env
 
-# Internal development docs live in the private repo and must never land here.
-# ARCHITECTURE.md and CLAUDE.md are the exceptions — they describe the code and
-# belong with it.
+# Agent process docs — local development only, never shipped with the repo.
+AGENTS.md
+CLAUDE.md
+HANDOFF.md
+project.md
+spec/
+tools/
+
+# Internal development docs that must never land in the repo.
 docs/RULES.md
 docs/BOARD.md
 docs/DECISIONS.md

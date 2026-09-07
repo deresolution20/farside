@@ -138,14 +138,13 @@ massif, rille, crater tiers, keepClean zones) — pure data: `P_ANAXIMENES` live
 `bake.js`, the other bundles in `regions.js`, one module that knows every world. There is
 no seed and no location argument; the seeds ride in P.
 
-**`P_ANAXIMENES` has a frozen guard:** `tools/bake-diff.cjs` holds a frozen copy of the
-pre-Phase-2 bake math and requires strict float equality against
-`bakeTerrain(P_ANAXIMENES)` plus two-bake determinism. Run it after any worldgen touch; a
-mismatch is fixed by changing the *new* code to agree, or — if Anaximenes' own P must move —
-by bumping its save key in the same commit. **The other three bundles are covered by the
-gate's in-page double-bake checks** (`P_LONGSHADOW` G28, `P_CHOS` G38, `P_CONAMARA` G39 —
-two fresh bakes, 1000 strict random samples equal), because bake-diff is frozen on
-Anaximenes only.
+**`P_ANAXIMENES` has a frozen identity guard:** a frozen copy of the
+pre-parameterisation bake math requires strict float equality against
+`bakeTerrain(P_ANAXIMENES)` plus two-bake determinism. Run it after any worldgen
+touch; a mismatch is fixed by changing the *new* code to agree, or — if
+Anaximenes' own P must move — by bumping its save key in the same commit.
+**The other three bundles are covered by the same in-page double-bake
+discipline** (two fresh bakes, 1000 strict random samples equal).
 
 It produces three CPU fields, all quality-independent:
 
@@ -374,7 +373,7 @@ current mission's *unmet* objectives (`tagOpen` / `anomalyOpen` / `objectiveTarg
 
 A new *kind* of objective still means touching the engine in `gameplay.js`; a new *mission*,
 or a new objective of an existing kind, is a `lore.js` edit only. Inserting a mission into
-`MISSIONS` shifts nothing — verified by the gate and by the insertion test.
+`MISSIONS` shifts nothing — verified by the insertion test.
 
 ### Anomaly saves are identity-based — the `KEY` is still the sharpest edge
 

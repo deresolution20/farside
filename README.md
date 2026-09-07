@@ -215,10 +215,10 @@ sun-disc scale, star seed, IBL ground bounce), the ground albedo seeds and
 tint, the dust palette, and the zone's own landmarks, anomalies, mission
 sequence, codex and ending. A zone is not an engine path: the two Moon records
 carry none of the Jovian fields and read defaults instead, and the default path
-is held bit-exact by a frozen reference — `tools/bake-diff.cjs` compares the
-pre-parameterisation bake math against today's with strict float equality and
-two-bake determinism; the two Jovian bundles ride on the gate's own in-page
-double-bake checks.
+is held bit-exact by a frozen identity check — a pre-parameterisation copy of
+the bake math that today's output must match to strict float equality, plus
+two-bake determinism; the two Jovian bundles ride on the same in-page
+double-bake discipline.
 
 Switching zones from the menu tears down exactly what the world builder owns —
 terrain, props, dust, rover, camera, sky, in reverse — and rebuilds it from the
@@ -534,9 +534,6 @@ src/
   ui/
     hud.js          instruments, minimap, codex                  529
     styles.css      scale system, three-row HUD grid, responsive 622
-tools/              dev only: the bake-diff identity guard and
-                    the headful browser gate — never shipped
-spec/               the phase specs and evidence the game was built to
 vendor/three/       three.js r160 + one addon (MIT)
 docs/               the screenshots in this README
 ```
