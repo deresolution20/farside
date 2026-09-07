@@ -1,22 +1,7 @@
 node_modules/
 .shots/
-.superpowers/
 .DS_Store
 Thumbs.db
 *.log
 
 .env
-
-# Agent process docs — local development only, never shipped with the repo.
-AGENTS.md
-CLAUDE.md
-HANDOFF.md
-project.md
-spec/
-tools/
-
-# Internal development docs that must never land in the repo.
-docs/RULES.md
-docs/BOARD.md
-docs/DECISIONS.md
-docs/tasks/
